@@ -1,0 +1,24 @@
+0 0 start;
+
+.data
+0
+.endd
+
+.macro ADD! a b;
+    a z; z b; z;
+.endm
+
+start:
+    IO a;
+    IO b;
+
+    ADD! a b;
+
+    b IO;
+    z z HALT;
+
+.data
+    a: 0
+    b: 0
+    z: 0
+.endd

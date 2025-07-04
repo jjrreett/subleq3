@@ -1,0 +1,42 @@
+ %import common.CNAME    -> IDENT
+ %import common.HEXDIGIT -> HEXDIGIT
+ %import common.DIGIT    -> DIGIT
+
+start: stmt*
+
+?stmt: label_def
+    | directive_block
+    | macro_call
+    | instruction
+
+label_def: IDENT ":"
+
+?directive_block: data_block | macro_block
+
+data_block: ".data" (label_def | IDENT | NUMBER)* ".endd"
+macro_block: ".macro" IDENT "!"  macro_args ";" instruction+ ".endm"
+macro_args: IDENT*
+
+macro_call: IDENT "!" macro_args ";"
+
+?instruction: short1
+           | short2
+           | full
+
+short1: value ";"               -> single_arg
+short2: value value ";"         -> double_arg
+full:   value value value ";"   -> triple_arg
+
+?value: IDENT | NUMBER
+NUMBER: DEC_INT | HEX_INT | BIN_INT
+
+DEC_INT: DIGIT+
+HEX_INT: "0x" HEXDIGIT+
+BIN_INT: "0b" BINDIGIT+
+
+BINDIGIT: "0" | "1"
+
+
+
+%ignore /[ \t]+/
+%ignore /\n+/
