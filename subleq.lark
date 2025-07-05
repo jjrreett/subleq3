@@ -1,6 +1,7 @@
  %import common.CNAME    -> IDENT
  %import common.HEXDIGIT -> HEXDIGIT
  %import common.DIGIT    -> DIGIT
+ %import common.SH_COMMENT
 
 start: stmt*
 
@@ -14,7 +15,7 @@ label_def: IDENT ":"
 ?directive_block: data_block | macro_block
 
 data_block: ".data" (label_def | IDENT | NUMBER)* ".endd"
-macro_block: ".macro" IDENT "!"  macro_args ";" instruction+ ".endm"
+macro_block: ".macro" IDENT "!"  macro_args ";" stmt+ ".endm"
 macro_args: IDENT*
 
 macro_call: IDENT "!" macro_args ";"
@@ -28,7 +29,7 @@ short2: value value ";"         -> double_arg
 full:   value value value ";"   -> triple_arg
 
 ?value: IDENT | NUMBER
-NUMBER: DEC_INT | HEX_INT | BIN_INT
+NUMBER: "-"? DEC_INT | HEX_INT | BIN_INT
 
 DEC_INT: DIGIT+
 HEX_INT: "0x" HEXDIGIT+
@@ -40,3 +41,4 @@ BINDIGIT: "0" | "1"
 
 %ignore /[ \t]+/
 %ignore /\n+/
+%ignore SH_COMMENT

@@ -1,19 +1,120 @@
-0 0 start;
+0 0 rshift;
 
-.data
-0
-.endd
+.data 0 .endd                    # addr 3 is the IO addr
 
-.macro ADD! a b;
+######## b = b + a ########
+.macro add! a b;
     a z; z b; z;
 .endm
 
-start:
+######## if a > 0: jmp b ########
+.macro jgtz! a b;
+    z a b;
+.endm
+
+######## a = a - 1 ########
+.macro dec1! a;
+    p1 a;
+.endm
+
+######## a = a + 1 ########
+.macro inc! a;
+    m1 a;
+.endm
+
+######## b = b * a ########
+.macro mul! a b;
+        inc! a;
+    loop:
+        p1 a break; # decrement 'a' by 1, break if 0
+        add! b tmp;
+        z z loop;
+    break:
+        b; add! tmp b; tmp tmp return;
+
+    .data tmp: 0 .endd
+    return:
+.endm
+
+######## a = a + a ########
+.macro double! a;
+    add! a a;
+.endm
+
+######## b = b << a ########
+.macro lshift! a b;
+        inc! a;
+    loop:
+        p1 a break; # decrement 'a' by 1, break if 0
+        double! b; z z loop;
+    break:
+.endm
+
+
+######## b = b >> a ########
+.macro rshift! a b;
+        
+        add! literal_16 count;
+        b count; 
+        inc! count;
+
+        p1 count end; # if count is <= 1: end
+
+        z z rshift_start;
+
+    shift:
+        double! a; double! out;
+
+    rshift_start:
+        tmp tmp; add! a tmp; m1 tmp inc_out;         # if the first bit of a is 1, inc out else shift
+        tmp tmp check_break;
+
+    inc_out:
+        m1 out;
+
+    check_break:
+        out IO;
+        p1 count end; # if count is <= 1: end
+        z z shift;
+
+    end:
+        b b; add! out b; z z return;
+
+    .data 
+        count: 0
+        tmp: 0
+        out: 0
+    .endd
+
+    return:
+.endm
+
+
+mul_3_numbers:
     IO a;
     IO b;
 
-    ADD! a b;
+    mul! a b;
+    b IO;
 
+    a a;
+    IO a;
+    mul! a b;
+    b IO;
+
+    z z HALT;
+
+lshift_b_by_a:
+    IO a;
+    IO b;
+    lshift! a b;
+    b IO;
+    z z HALT;
+
+rshift_b_by_a:
+    IO a;
+    IO b;
+    rshift! a b;
     b IO;
     z z HALT;
 
@@ -21,4 +122,9 @@ start:
     a: 0
     b: 0
     z: 0
+    p1: 1
+    m1: -1
+
+    literal_16: 16
 .endd
+
