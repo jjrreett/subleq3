@@ -187,62 +187,76 @@
     .endd
 .endm
 
+.macro push! a;
+    write_deref! a stack_ptr; clr! a;
+    inc! stack_ptr;
+.endm
 
+.macro pull! a;
+    dec! stack_ptr;
+    read_deref! stack_ptr a;
+.endm
+
+.macro call_subroutine! func_addr;
+    write_deref! return_addr stack_ptr; inc! stack_ptr;
+    jmp! func_addr;
+    .data return_addr: ? .endd
+    return: 
+.endm
+
+.macro subroutine_boilerplate!;
+        jleqz! second_pass return;
+        .data
+            p1                        # dec second_pass to reset
+            second_pass
+            ?
+            0                         # jmp to return_addr
+            0
+            return_addr: 0
+
+            second_pass: 0            # flag to branch on rerun
+        .endd
+    return:
+        inc! second_pass;
+        pull! return_addr;
+.endm
+
+
+################################################
+#################### CODE ######################
+################################################
 jmp! test;
 .data 0 .endd                    # ALIGNMENT addr 3 is the IO addr
 
-# simple_pointer_dref_example:
-#     IO a;
-# 
-#     write_deref! a ptr;
-#     read_deref! ptr dest;
-# 
-#     dest IO;
-#     z z HALT; 
-
-# stack_shenanigans:
-# 
-#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
-#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
-#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
-#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
-#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
-#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
-# 
-#     z z HALT; 
 
 func_add:
-    dec! stack_ptr; read_deref! stack_ptr func_add_return_addr;
+    subroutine_boilerplate!;
+    pull! a;
+    pull! b;
 
-    dec! stack_ptr; read_deref! stack_ptr func_add_a;
-    dec! stack_ptr; read_deref! stack_ptr func_add_b;
-
-    add! func_add_a func_add_b;
-    write_deref! func_add_b stack_ptr; inc! stack_ptr; jmp! func_add_jump_to_return;
-    # drop through to jump_to_return
+    add! a b;
+    
+    push! b;
+    jmp! func_add;
     
     .data
-        func_add_jump_to_return: 0
-        0
-        func_add_return_addr: 0
-
-        func_add_a: 0
-        func_add_b: 0
-
-        func_add_tmp: 0
+        a: 0
+        b: 0
     .endd
 
 
 
 test:
-    IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
-    IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
-    write_deref! return_addr stack_ptr; inc! stack_ptr;
-    jmp! func_add;
+    clr! a;
+    IO a; 
+    push! a;
+    clr! a;
+    IO a; 
+    push! a;
+    call_subroutine! func_add;
+    pull! a;
+    a IO;
 
-.data return_addr: ? .endd
-return: 
-    dec! stack_ptr; read_deref! stack_ptr a; a IO; clr! a;
 
     z z HALT; 
 
