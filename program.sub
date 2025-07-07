@@ -1,5 +1,9 @@
-.macro goto! a;
+.macro jmp! a;
     z z a;
+.endm
+
+.macro clr! a;
+    a;
 .endm
 
 ######## b = b + a ########
@@ -53,9 +57,7 @@
     return:
 .endm
 
-.macro jmp! a;
-    z z a;
-.endm
+
 
 ######## b = b * a ########
 .macro mul! a b;
@@ -134,7 +136,7 @@
     shift:
         double! a;                                                 # double a
         rshift! p1 b;                                              # halve b
-        goto! while;
+        jmp! while;
     .data result: 0 tmp: 0 .endd
     return:
         cpy! result b;
@@ -149,14 +151,26 @@
 # executes the date block, falls through
 .macro read_deref! ptr dest;
     # b <- a
-
+    
+    clr! code_a;
+    clr! code_a0;
+    clr! code_a1;
+    ptr z;
+    z code_a;
+    z code_a0;
+    z code_a1; 
+    clr! z;
     cpy! ptr code_a;
     dest dest code_a;             # clear dest and jump code_a
 
     .data
-        code_a:  0                # This will become: subleq val, dest, ...
-        code_b:  dest
-        code_c:  ?                # next instruction
+        # Two self modifying instructions
+        code_a: 0                # dest -= *code_a
+                dest
+                ?
+       code_a0: 0                # clr! *code_a
+       code_a1: 0
+                ?
     .endd
 .endm
 
@@ -186,28 +200,58 @@ jmp! test;
 #     dest IO;
 #     z z HALT; 
 
-test:
+# stack_shenanigans:
+# 
+#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
+#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
+#     IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
+#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
+#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
+#     dec! stack_ptr; read_deref! stack_ptr a; a IO;
+# 
+#     z z HALT; 
 
-    read_deref! ptr dest;
-    dest IO;
-    inc! ptr;
-    read_deref! ptr dest;
-    dest IO;
-    inc! ptr;
-    read_deref! ptr dest;
-    dest IO;
-    inc! ptr;
-    read_deref! ptr dest;
-    dest IO;
-    inc! ptr;
+func_add:
+    dec! stack_ptr; read_deref! stack_ptr func_add_return_addr;
+
+    dec! stack_ptr; read_deref! stack_ptr func_add_a;
+    dec! stack_ptr; read_deref! stack_ptr func_add_b;
+
+    add! func_add_a func_add_b;
+    write_deref! func_add_b stack_ptr; inc! stack_ptr; jmp! func_add_jump_to_return;
+    # drop through to jump_to_return
+    
+    .data
+        func_add_jump_to_return: 0
+        0
+        func_add_return_addr: 0
+
+        func_add_a: 0
+        func_add_b: 0
+
+        func_add_tmp: 0
+    .endd
+
+
+
+test:
+    IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
+    IO a; write_deref! a stack_ptr; inc! stack_ptr; clr! a;
+    write_deref! return_addr stack_ptr; inc! stack_ptr;
+    jmp! func_add;
+
+.data return_addr: ? .endd
+return: 
+    dec! stack_ptr; read_deref! stack_ptr a; a IO; clr! a;
 
     z z HALT; 
 
 
 .data
 
-    val: -5 -10 -15 -20
-    ptr: val
+    a: 0
+    stack: 0 0 0 0 0
+    stack_ptr: stack
     dest: 0
 
     z: 0
