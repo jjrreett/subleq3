@@ -2,11 +2,13 @@
 """Emulates a subleq computer from an np.ndarray based image."""
 
 import argparse
+
+# from rich import print  # noqa: A004
+import json
 from functools import wraps
 from pathlib import Path
 
 import numpy as np
-# from rich import print  # noqa: A004
 
 DEBUG = True
 
@@ -40,18 +42,18 @@ def debug_instruction(pc, data, rlabels):
     )
     da, db = np.int16(data[a]), np.int16(data[b])
 
-    # debug(f"\n[PC={pc:5d}] Executing SUBLEQ {a}, {b}, {c}")
-    # debug("-" * 60)
-    debug(f"data[{pc:5d}] = {a:5d} -> data[{a:5d}] = {np.uint16(da):6x} : {rlabels.get(a, ''):10s}")
+    ndb = db - da
+    debug(f"data[{pc:5d}] = {a:5d} -> data[{a:5d}] = {np.uint16(da):6x} : {rlabels.get(a, ''):15s}")
     debug(
-        f"data[{pc + 1:5d}] = {b:5d} -> data[{b:5d}] = {np.uint16(db):6x} : {rlabels.get(b, ''):10s} -> {db - da:5d}, {np.uint16(db) - np.uint16(da):6x}"
+        f"data[{pc + 1:5d}] = {b:5d} -> data[{b:5d}] = {np.uint16(db):6x} : {rlabels.get(b, ''):15s} -> {ndb:5d}, {np.uint16(ndb):6x}, {np.uint16(ndb):0>16b}"
     )
-    debug(f"data[{pc + 2:5d}] = {c:5d}                         : {rlabels.get(c, ''):10s}")
+    debug(f"data[{pc + 2:5d}] = {c:5d}                         : {rlabels.get(c, ''):15s}")
     debug("-" * 50)
 
 
-def subleq(data: np.ndarray, labels: dict[str, int]) -> None:
+def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
     """Emulate a subleq computer on a bank of data."""
+    count = 0
 
     # reverse the dictionary
     rlabels = {}
@@ -63,6 +65,7 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> None:
 
     pc = np.uint16(0)
     while True:
+        count += 1
         debug_instruction(pc, data, rlabels)
         a, b, c = (
             data[pc],
@@ -70,19 +73,21 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> None:
             data[pc + 2],
         )
 
+        da, db = data[a], data[b]
+
         if a == IO_ADDR:
-            data[a] = (-eval(input("> "))) % (1 << 16)  # noqa: S307
+            da = (-eval(input("> "))) % (1 << 16)  # noqa: S307
 
         if b == IO_ADDR:
-            print(f"< {data[a]:5d}, {np.uint16(data[a]):6x}")
+            print(f"< {da:5d}, {np.uint16(da):6x}, {np.uint16(da):16b}")
         else:
-            post = data[b] - data[a]
-            data[b] = post
+            db = db - da
+            data[b] = db
 
-        if data[b].astype(np.int16) <= 0:
+        if db.astype(np.int16) <= 0:
             if c == HALT_ADDR:
                 debug("HALT")
-                return
+                return count
             pc = c
             continue
         pc += 3
@@ -112,14 +117,13 @@ def main() -> None:
 
     data = np.load(args.input)
 
-    import json
-
     labels = {}
     if args.labels:
         with args.input.with_suffix(".labels").open("r") as fp:
             labels = json.load(fp)
 
-    subleq(data, labels)
+    count = subleq(data, labels)
+    print(f"{args.input} halted in {count} instructions.")
 
 
 if __name__ == "__main__":

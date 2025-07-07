@@ -1,7 +1,7 @@
 
 ## Generate stand alone grammar
 
-From project directory: `uv run scripts/gen_grammar.py`
+From project directory: `uv run subleq/gen_grammar.py`
 
 ALT: `uv run python -m lark.tools.standalone subleq.grammer > subleq/subleq.py`
 

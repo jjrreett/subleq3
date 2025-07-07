@@ -16,6 +16,10 @@ from .subleq import Lark_StandAlone, Transformer
 DEBUG = True
 
 
+class CompilationError(Exception):
+    """Failure to Compile."""
+
+
 @wraps(print)
 def debug(*args: tuple, **kwargs: dict) -> None:
     """If DEBUG: print."""
@@ -51,34 +55,41 @@ class _Macro:
         arg_map = dict(zip(self.args, actual_args, strict=False))
         expanded = []
 
+        instructions = self.instructions
+        # find all local labels and compute the mangled form
         labels = {}
-
-        for instr in self.instructions:
-            if isinstance(instr, str):
-                # Replace argument name with its actual value
-                expanded.append(arg_map.get(instr, instr))
-            elif isinstance(instr, (_Next, int)):
-                expanded.append(instr)
-            elif isinstance(instr, _Label):
+        for instr in instructions:
+            if isinstance(instr, _Label):
                 mangled_name = f"{self.ident}_{self.call_counter}_{instr.name}"
                 labels[instr.name] = mangled_name
-                expanded.append(_Label(name=mangled_name))
-            else:
+        # replace local labels with mangled form
+        instructions = [
+            _Label(name=labels[instr.name])
+            if isinstance(instr, _Label) and instr.name in labels
+            else instr
+            for instr in self.instructions
+        ]
+        # replace idents referencing local labels with their mangled name
+        instructions = [
+            labels[instr] if isinstance(instr, str) and instr in labels else instr
+            for instr in instructions
+        ]
+
+        # Replace argument name with its actual value
+        instructions = [
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
+        ]
+        for instr in instructions:
+            if not isinstance(instr, (str, _Next, int, _Label)):
                 msg = f"Unsupported instruction token: {instr!r}"
                 raise TypeError(msg)
+
         self.call_counter += 1
 
-        remap_labels = []
-        for instr in expanded:
-            if isinstance(instr, str) and instr in labels:
-                remap_labels.append(labels[instr])
-            else:
-                remap_labels.append(instr)
-
         debug(f"Macro {self.ident!r} expanded to:")
-        debug(remap_labels)
+        debug(instructions)
 
-        return remap_labels
+        return instructions
 
 
 class _SubleqTransformer(Transformer):
@@ -135,6 +146,9 @@ class _SubleqTransformer(Transformer):
     def NUMBER(self, token) -> int:  # noqa: ANN001, N802
         return eval(token.value)  # noqa: S307
 
+    def QMARK(self, token) -> int:  # noqa: ANN001, N802
+        return _Next()
+
 
 def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     """Compile subleq assembly into image in the format of np.ndarray."""
@@ -161,6 +175,10 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     data = np.zeros((len(code),), dtype=np.uint16)
 
     for i, x in enumerate(code):
+        if not isinstance(x, int):
+            msg = f"The label {x!r} was not reduced to an int"
+            raise CompilationError(msg)
+        assert isinstance(x, int), f"x must be an int {x!r}"
         data[i] = np.uint16(x % (1 << 16))
 
     return data, labels

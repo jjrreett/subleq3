@@ -1,25 +1,60 @@
-0 0 rshift;
-
-.data 0 .endd                    # addr 3 is the IO addr
+.macro goto! a;
+    z z a;
+.endm
 
 ######## b = b + a ########
 .macro add! a b;
     a z; z b; z;
 .endm
 
-######## if a > 0: jmp b ########
-.macro jgtz! a b;
-    z a b;
+######## b = a ########
+.macro cpy! a b;
+    b; a z; z b; z;
 .endm
 
+
 ######## a = a - 1 ########
-.macro dec1! a;
+.macro dec! a;
     p1 a;
 .endm
 
 ######## a = a + 1 ########
 .macro inc! a;
     m1 a;
+.endm
+
+
+######## if a <= 0: jmp b ########
+.macro jleqz! a b;
+    z a b;
+.endm
+
+######## if a >= 0: jmp b ########
+.macro jgeqz! a b;
+    a z jump; z z return;                           # 0 -> 0, jump; + -> -, jump; - -> +, return
+    jump:
+        z z b;
+    return:
+.endm
+
+######## if a <  0: jmp b ########
+.macro jltz! a b;
+    inc! a; jleqz! a jump; dec! a; z z return;      # 0 -> +, return; + -> +, return; - -> -|+, jump # TODO OVERFLOW case (+ -> -)
+    jump:
+        dec! a; z z b;
+    return:
+.endm
+
+######## if a >  0: jmp b ########
+.macro jgtz! a b;
+    dec! a; jgeqz! a jump; inc! a; z z return;      # 0 -> -, jump; + -> +|0, jump; - -> -, return # TODO OVERFLOW case (- -> +)
+    jump:
+        inc! a; z z b;
+    return:
+.endm
+
+.macro jmp! a;
+    z z a;
 .endm
 
 ######## b = b * a ########
@@ -43,11 +78,13 @@
 
 ######## b = b << a ########
 .macro lshift! a b;
-        inc! a;
+    cpy! a counter;
+    inc! counter;
     loop:
-        p1 a break; # decrement 'a' by 1, break if 0
-        double! b; z z loop;
-    break:
+        p1 counter return;                                        # decrement counter by 1, return if 0
+        double! b; jmp! loop;
+    .data counter: 0 .endd
+    return:
 .endm
 
 
@@ -73,7 +110,6 @@
         m1 out;
 
     check_break:
-        out IO;
         p1 count end; # if count is <= 1: end
         z z shift;
 
@@ -89,42 +125,98 @@
     return:
 .endm
 
+####### b = b * a #########
+.macro fastmul! a b; # WIP
+    while:
+        jleqz! b return;                                           # if b <= 0: return
+        cpy! b tmp; lshift! literal_15 tmp; jgeqz! tmp shift;      # if b & 1:
+        add! a result; result IO;                                  #     result += a
+    shift:
+        double! a;                                                 # double a
+        rshift! p1 b;                                              # halve b
+        goto! while;
+    .data result: 0 tmp: 0 .endd
+    return:
+        cpy! result b;
+.endm
 
-mul_3_numbers:
-    IO a;
-    IO b;
 
-    mul! a b;
-    b IO;
 
-    a a;
-    IO a;
-    mul! a b;
-    b IO;
 
-    z z HALT;
 
-lshift_b_by_a:
-    IO a;
-    IO b;
-    lshift! a b;
-    b IO;
-    z z HALT;
+# dest is the place where we want the value
+# ptr is the addrs of the -value (as long as we negate the number going in, we can negate it going out)
+# executes the date block, falls through
+.macro read_deref! ptr dest;
+    # b <- a
 
-rshift_b_by_a:
-    IO a;
-    IO b;
-    rshift! a b;
-    b IO;
-    z z HALT;
+    cpy! ptr code_a;
+    dest dest code_a;             # clear dest and jump code_a
+
+    .data
+        code_a:  0                # This will become: subleq val, dest, ...
+        code_b:  dest
+        code_c:  ?                # next instruction
+    .endd
+.endm
+
+.macro write_deref! src ptr;
+    # b <- a
+
+    cpy! ptr code_b;
+    jmp! code_a;
+
+    .data
+        code_a:  src              # This will become: subleq val, dest, ...
+        code_b:  0
+        code_c:  ?                # next instruction
+    .endd
+.endm
+
+
+jmp! test;
+.data 0 .endd                    # ALIGNMENT addr 3 is the IO addr
+
+# simple_pointer_dref_example:
+#     IO a;
+# 
+#     write_deref! a ptr;
+#     read_deref! ptr dest;
+# 
+#     dest IO;
+#     z z HALT; 
+
+test:
+
+    read_deref! ptr dest;
+    dest IO;
+    inc! ptr;
+    read_deref! ptr dest;
+    dest IO;
+    inc! ptr;
+    read_deref! ptr dest;
+    dest IO;
+    inc! ptr;
+    read_deref! ptr dest;
+    dest IO;
+    inc! ptr;
+
+    z z HALT; 
+
 
 .data
-    a: 0
-    b: 0
+
+    val: -5 -10 -15 -20
+    ptr: val
+    dest: 0
+
     z: 0
     p1: 1
     m1: -1
 
+    tmp: 0
+
     literal_16: 16
+    literal_15: 15
 .endd
 

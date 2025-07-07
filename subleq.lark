@@ -14,7 +14,7 @@ label_def: IDENT ":"
 
 ?directive_block: data_block | macro_block
 
-data_block: ".data" (label_def | IDENT | NUMBER)* ".endd"
+data_block: ".data" (label_def | value)* ".endd"
 macro_block: ".macro" IDENT "!"  macro_args ";" stmt+ ".endm"
 macro_args: IDENT*
 
@@ -28,7 +28,7 @@ short1: value ";"               -> single_arg
 short2: value value ";"         -> double_arg
 full:   value value value ";"   -> triple_arg
 
-?value: IDENT | NUMBER
+?value: IDENT | NUMBER | QMARK
 NUMBER: "-"? DEC_INT | HEX_INT | BIN_INT
 
 DEC_INT: DIGIT+
@@ -37,7 +37,7 @@ BIN_INT: "0b" BINDIGIT+
 
 BINDIGIT: "0" | "1"
 
-
+QMARK: "?"
 
 %ignore /[ \t]+/
 %ignore /\n+/
