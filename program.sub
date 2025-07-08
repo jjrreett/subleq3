@@ -192,7 +192,7 @@
     inc! stack_ptr;
 .endm
 
-.macro pull! a;
+.macro pop! a;
     dec! stack_ptr;
     read_deref! stack_ptr a;
 .endm
@@ -218,7 +218,7 @@
         .endd
     return:
         inc! second_pass;
-        pull! return_addr;
+        pop! return_addr;
 .endm
 
 
@@ -231,11 +231,11 @@ jmp! test;
 
 func_add:
     subroutine_boilerplate!;
-    pull! a;
-    pull! b;
+    pop! a;
+    pop! b;
 
     add! a b;
-    
+
     push! b;
     jmp! func_add;
     
@@ -245,8 +245,138 @@ func_add:
     .endd
 
 
+.macro newline!;
+    ascii_lf IO;
+    ascii_cr IO;
+.endm
 
-test:
+func_print_bin:
+    subroutine_boilerplate!;
+    pop! a;
+
+    cpy! literal_16 counter;
+
+    check_msb:
+        jltz! a print_1;
+
+    print_0:
+        ascii_0 IO;
+        jmp! shift;
+
+    print_1:
+        ascii_1 IO;
+    
+    shift:
+        p1 counter return;
+        lshift! p1 a;
+        jmp! check_msb;
+    
+    return:
+        ascii_lf IO;
+        ascii_cr IO;
+        jmp! func_print_bin;
+
+    .data
+        a: 0
+        counter: 0
+    .endd
+
+.macro triple_word_shift! a b c;
+        double! a;
+        jgeqz! b shift_b;
+        inc! a;
+    shift_b:
+        double! b;
+        jgeqz! c shift_c;
+        inc! b;
+    shift_c:
+        double! c;
+.endm
+
+######## 8 bit shift; inc output if overflow ########
+.macro quarter_word_lshift_overflow! input output;
+        double! input;
+        cpy! input tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        jgeqz! tmp return;
+        inc! output;
+    return:
+.endm
+
+######## 8 bit shift; inc output if overflow ########
+.macro half_word_lshift_overflow! input output;
+        double! input;
+        cpy! input tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        jgeqz! tmp return;
+        inc! output;
+    return:
+.endm
+
+######## 16 bit shift; inc output if overflow ########
+.macro lshift_overflow! input output;
+        cpy! input tmp;
+        double! input;
+        jgeqz! tmp return;
+        inc! output;
+    return:
+.endm
+
+double_dabble:
+    subroutine_boilerplate!;
+    pop! input;
+
+
+    cpy! literal_16 counter;
+
+    check_msb:
+        jltz! a print_1;
+
+    print_0:
+        ascii_0 IO;
+        jmp! shift;
+
+    print_1:
+        ascii_1 IO;
+    
+    shift:
+        p1 counter return;
+        lshift! p1 a;
+        jmp! check_msb;
+    
+    return:
+        ascii_lf IO;
+        ascii_cr IO;
+        jmp! func_print_bin;
+
+    .data
+        input: 0
+        onestens: 0
+        hundredsthousands: 0
+        tensthousands: 0
+        counter: 0
+    .endd
+
+sub_test:
     clr! a;
     IO a; 
     push! a;
@@ -254,16 +384,72 @@ test:
     IO a; 
     push! a;
     call_subroutine! func_add;
-    pull! a;
+    pop! a;
     a IO;
-
-
     z z HALT; 
+
+print_bin_test:
+
+    clr! a;
+    IO a;
+    push! a;
+    call_subroutine! func_print_bin;
+    jmp! test;
+    
+test:    
+    clr! input;
+    clr! a;
+    clr! b;
+    IO input;
+
+    quarter_word_lshift_overflow! a b;
+    half_word_lshift_overflow! input a;
+    push! a;
+    call_subroutine! func_print_bin;
+    push! b;
+    call_subroutine! func_print_bin;
+    push! input;
+    call_subroutine! func_print_bin;
+    newline!;
+
+    quarter_word_lshift_overflow! a b;
+    half_word_lshift_overflow! input a;
+    push! a;
+    call_subroutine! func_print_bin;
+    push! b;
+    call_subroutine! func_print_bin;
+    push! input;
+    call_subroutine! func_print_bin;
+    newline!;
+
+    quarter_word_lshift_overflow! a b;
+    half_word_lshift_overflow! input a;
+    push! a;
+    call_subroutine! func_print_bin;
+    push! b;
+    call_subroutine! func_print_bin;
+    push! input;
+    call_subroutine! func_print_bin;
+    newline!;
+
+    quarter_word_lshift_overflow! a b;
+    half_word_lshift_overflow! input a;
+    push! a;
+    call_subroutine! func_print_bin;
+    push! b;
+    call_subroutine! func_print_bin;
+    push! input;
+    call_subroutine! func_print_bin;
+    newline!;
+
+    jmp! HALT;
 
 
 .data
-
+    counter: 10
     a: 0
+    b: 0
+    input: 0
     stack: 0 0 0 0 0
     stack_ptr: stack
     dest: 0
@@ -276,5 +462,10 @@ test:
 
     literal_16: 16
     literal_15: 15
+
+    ascii_lf: 10
+    ascii_cr: 13
+    ascii_0: 48
+    ascii_1: 49
 .endd
 
