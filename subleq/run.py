@@ -13,6 +13,8 @@ import sys
 import os
 import time
 
+from . import const
+
 DEBUG = True
 
 
@@ -21,10 +23,6 @@ def debug(*args: tuple, **kwargs: dict) -> None:
     """If DEBUG: print."""
     if DEBUG:
         print(*args, **kwargs, file=sys.stderr)
-
-
-IO_ADDR = 0x03
-HALT_ADDR = 0x00
 
 
 def print_data(data: np.ndarray) -> None:
@@ -46,11 +44,15 @@ def debug_instruction(pc, data, rlabels):
     da, db = np.int16(data[a]), np.int16(data[b])
     with np.errstate(over="ignore"):
         ndb = db - da
-    debug(f"data[{pc:5d}] = {a:5d} -> data[{a:5d}] = {np.uint16(da):6x} : {rlabels.get(a, ''):15s}")
+    debug(
+        f"data[{pc:5d}] = {a:5d} -> data[{a:5d}] = {np.uint16(da):6x} : {rlabels.get(a, ''):15s}"
+    )
     debug(
         f"data[{pc + 1:5d}] = {b:5d} -> data[{b:5d}] = {np.uint16(db):6x} : {rlabels.get(b, ''):15s} -> {ndb:5d}, {np.uint16(ndb):6x}, {np.uint16(ndb):0>16b}"
     )
-    debug(f"data[{pc + 2:5d}] = {c:5d}                         : {rlabels.get(c, ''):15s}")
+    debug(
+        f"data[{pc + 2:5d}] = {c:5d}                         : {rlabels.get(c, ''):15s}"
+    )
     debug("-" * 50)
 
 
@@ -78,12 +80,14 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
 
         da, db = data[a], data[b]
 
-        if a == IO_ADDR:
+        if a == const.IO_ADDR:
             da = (-eval(input("> "))) % (1 << 16)  # noqa: S307
 
-        if b == IO_ADDR:
-            # print(f"< {da:5d}, {np.uint16(da):6x}, {np.uint16(da):16b}")
+        if b == const.IO_ADDR:
             os.write(1, bytes([da]))
+
+        elif b == const.INSPECT_ADDR:
+            print(f" < {da:5d}, {np.uint16(da):6x}, {np.uint16(da):16b}")
 
         else:
             with np.errstate(over="ignore"):
@@ -91,7 +95,7 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
             data[b] = db
 
         if db.astype(np.int16) <= 0:
-            if c == HALT_ADDR:
+            if c == const.HALT_ADDR:
                 debug("HALT")
                 return count
             pc = c

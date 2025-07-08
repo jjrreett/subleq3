@@ -12,6 +12,7 @@ import numpy as np
 from rich import print  # noqa: A004
 
 from .subleq import Lark_StandAlone, Transformer
+from . import const
 
 DEBUG = True
 
@@ -25,10 +26,6 @@ def debug(*args: tuple, **kwargs: dict) -> None:
     """If DEBUG: print."""
     if DEBUG:
         print(*args, **kwargs)
-
-
-IO_ADDR = 0x03
-HALT_ADDR = 0x00
 
 
 @dataclass
@@ -77,7 +74,8 @@ class _Macro:
 
         # Replace argument name with its actual value
         instructions = [
-            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr
+            for instr in instructions
         ]
         for instr in instructions:
             if not isinstance(instr, (str, _Next, int, _Label)):
@@ -123,7 +121,8 @@ class _SubleqTransformer(Transformer):
         return self.macros[ident].expand(args)
 
     def label_def(self, items) -> _Label:  # noqa: ANN001
-        return _Label(name=items[0])
+        name = items[0]
+        return _Label(name=name)
 
     def single_arg(self, items) -> tuple[str | _Next]:  # noqa: ANN001
         a = items[0]
@@ -160,9 +159,11 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     debug(instructions)
 
     code = []
-    labels = {"IO": IO_ADDR, "HALT": HALT_ADDR}
+    labels = const.get_labels()
     for inst in instructions:
         if isinstance(inst, _Label):
+            if inst.name in labels:
+                raise CompilationError(f"Label {inst.name!r} used twice")
             labels[inst.name] = len(code)
             continue
         if isinstance(inst, _Next):
@@ -190,7 +191,11 @@ def main() -> None:
     parser.add_argument("input", type=Path, help="Input source file")
     parser.add_argument("-o", "--output", type=Path, help="Output filename")
     parser.add_argument(
-        "-l", "--labels", dest="labels", action="store_true", help="Save labels to output.labels"
+        "-l",
+        "--labels",
+        dest="labels",
+        action="store_true",
+        help="Save labels to output.labels",
     )
     parser.add_argument(
         "-g",

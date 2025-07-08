@@ -1,0 +1,7 @@
+HALT_ADDR = 0x00
+IO_ADDR = 0x03
+INSPECT_ADDR = 0x04
+
+
+def get_labels():
+    return {"IO": IO_ADDR, "HALT": HALT_ADDR, "INSPECT": INSPECT_ADDR}
