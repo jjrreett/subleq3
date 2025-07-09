@@ -350,29 +350,20 @@ func_print_bin:
     .endd
 
 
-    
-test:    
-    # clr! input;
-    # IO input;
 
+func_print_dec:
+    subroutine_boilerplate!;
+    pop! func_print_dec_input;
+    push! a;
+    push! counter;
     clr! ones;
     clr! tens;
     clr! hund;
     clr! thou;
     clr! tthou;
+    cpy! literal_16 counter;
 
-    
-    # tthou INSPECT;
-    # thou INSPECT;
-    # hund INSPECT;
-    # tens INSPECT;
-    # ones INSPECT;
-    # input INSPECT;
-    # newline!;
-
-
-
-shift:
+func_print_dec_shift:
     double_dabble_add_3! thou;
     double_dabble_add_3! hund;
     double_dabble_add_3! tens;
@@ -385,7 +376,10 @@ shift:
     quarter_word_lshift_overflow! ones tens;
     lshift_overflow! input ones;
 
+    subleq! p1 counter func_print_dec_cleanup;
+    jmp! func_print_dec_shift;
 
+func_print_dec_cleanup:
     cpy! ascii_0 a;
     add! tthou a;
     a IO;
@@ -403,27 +397,37 @@ shift:
     a IO;
     newline!;
 
-    # EXPECT 0x750a -> 29962
-    
-    subleq! p1 counter print;
-    jmp! shift;
-print:
-    jmp! HALT;
+    pop! a;
+    pop! counter;
+    jmp! func_print_dec;
 
 .data
-    counter: 16
-
+    func_print_dec_input: 0
     ones: 0
     tens: 0
     hund: 0
     thou: 0
     tthou: 0
+.endd
+
+    
+test:    
+    clr! input;
+    IO input;
+    push! input;
+    call_subroutine! func_print_dec;
+    jmp! test;
+
+
+
+.data
+    counter: 16
 
     a: 0
     b: 0
     c: 0
     d: 0
-    input: 0x750a
+    input: 0
     stack: 0 0 0 0 0 0 0 0 0 0
     stack_ptr: stack
     dest: 0
