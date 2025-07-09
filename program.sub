@@ -1,3 +1,7 @@
+.macro subleq! a b c;
+    a b c;
+.endm
+
 .macro jmp! a;
     z z a;
 .endm
@@ -9,6 +13,10 @@
 ######## b = b + a ########
 .macro add! a b;
     a z; z b; z;
+.endm
+
+.macro sub! a b;
+    a b;
 .endm
 
 ######## b = a ########
@@ -27,33 +35,46 @@
     m1 a;
 .endm
 
-
 ######## if a <= 0: jmp b ########
 .macro jleqz! a b;
     z a b;
 .endm
 
+
+######## if a > 0: jmp b ########
+.macro jgtz! a b;
+                            # not(a <= 0) -> jump
+    jleqz! a return;        # a <= 0, don't take the jump to b
+    jmp! b;
+    return:
+.endm
+
+######## if a == 0: jmp b ########
+.macro jeqz! a b;
+                            # not(a > 0) and (a+1 > 0) -> jump
+    jgtz! a return;         # a > 0, do not jump
+    inc! a;
+    jgtz! a decjump;        # a+1 > 0, jump
+    dec! a;                 # fall through to de-increment a
+    jmp! return;
+    decjump:
+        dec! a;
+        jmp! b;
+    return:
+.endm
+
 ######## if a >= 0: jmp b ########
 .macro jgeqz! a b;
-    a z jump; z z return;                           # 0 -> 0, jump; + -> -, jump; - -> +, return
-    jump:
-        z z b;
-    return:
+                            # (a > 0) or (a == 0) -> jump
+    jgtz! a b;              # a > 0, jump
+    jeqz! a b;              # a == 0, jump
 .endm
 
 ######## if a <  0: jmp b ########
 .macro jltz! a b;
-    inc! a; jleqz! a jump; dec! a; z z return;      # 0 -> +, return; + -> +, return; - -> -|+, jump # TODO OVERFLOW case (+ -> -)
-    jump:
-        dec! a; z z b;
-    return:
-.endm
-
-######## if a >  0: jmp b ########
-.macro jgtz! a b;
-    dec! a; jgeqz! a jump; inc! a; z z return;      # 0 -> -, jump; + -> +|0, jump; - -> -, return # TODO OVERFLOW case (- -> +)
-    jump:
-        inc! a; z z b;
+                            # not(a == 0) and (a <= 0) -> jump
+    jeqz! a return;         # a == 0: therefor not a < 0, return
+    jleqz! a b;             # a <= 0, but not 0 -> a < 0, take the jump
     return:
 .endm
 
@@ -188,11 +209,11 @@
 .endm
 
 .macro push! a;
-    write_deref! a stack_ptr; clr! a;
+    write_deref! a stack_ptr;
     inc! stack_ptr;
 .endm
 
-.macro pull! a;
+.macro pop! a;
     dec! stack_ptr;
     read_deref! stack_ptr a;
 .endm
@@ -205,66 +226,209 @@
 .endm
 
 .macro subroutine_boilerplate!;
-        jleqz! second_pass return;
+        jleqz! second_pass setup;     # if second_pass <= 0 then jmp to setup 
+        clr! second_pass;             #     else clean up second_pass and ...
         .data
-            p1                        # dec second_pass to reset
-            second_pass
-            ?
-            0                         # jmp to return_addr
+            0                         # self modifying jmp to return_addr
             0
             return_addr: 0
 
             second_pass: 0            # flag to branch on rerun
         .endd
-    return:
+    setup:
         inc! second_pass;
-        pull! return_addr;
+        pop! return_addr;            # pop the return addr from the stack and put into self modifying jmp
 .endm
 
+######## 4 bit shift; inc output if overflow ########
+.macro quarter_word_lshift_overflow! input output;
+                            # 0000_0000_0000_1000
+        double! input;      # 0000_0000_0001_0000
+        cpy! input tmp;
+        double! tmp;        # 0000_0000_0010_0000
+        double! tmp;        # 0000_0000_0100_0000
+        double! tmp;        # 0000_0000_1000_0000
+
+        double! tmp;        # 0000_0001_0000_0000
+        double! tmp;        # 0000_0010_0000_0000
+        double! tmp;        # 0000_0100_0000_0000
+        double! tmp;        # 0000_1000_0000_0000
+
+        double! tmp;        # 0001_0000_0000_0000
+        double! tmp;        # 0010_0000_0000_0000
+        double! tmp;        # 0100_0000_0000_0000
+        double! tmp;        # 1000_0000_0000_0000
+        
+        jgeqz! tmp no_overflow;
+        inc! output;
+        sub! literal_16 input;
+    no_overflow:
+.endm
+
+######## 8 bit shift; inc output if overflow ########
+.macro half_word_lshift_overflow! input output;
+        double! input;
+        cpy! input tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        double! tmp;
+
+        double! tmp;
+        double! tmp;
+        double! tmp;
+        jgeqz! tmp return;
+        inc! output;
+        sub! literal_256 input;
+    return:
+.endm
+
+######## 16 bit shift; inc output if overflow ########
+.macro lshift_overflow! input output;
+        jgeqz! input no_overflow;
+        inc! output;                 # inc output if overflow, always shift input
+    no_overflow:
+        double! input;
+.endm
+
+
+.macro newline!;
+    ascii_lf IO;
+    ascii_cr IO;
+.endm
+
+.macro double_dabble_add_3! x;
+    cpy! x tmp;
+    subleq! literal_4 tmp return;    # if x ≤ 4, skip
+    add! literal_3 x;                # else x += 3
+    jmp! return;
+    .data tmp: 0 .endd
+return:
+.endm
 
 ################################################
 #################### CODE ######################
 ################################################
 jmp! test;
-.data 0 .endd                    # ALIGNMENT addr 3 is the IO addr
+# ALIGNMENT
+.data 
+    0     # IO
+    0     # INSPECT
+.endd                    
 
 
-func_add:
+
+func_print_bin:
     subroutine_boilerplate!;
-    pull! a;
-    pull! b;
+    pop! func_print_bin_a;
 
-    add! a b;
+    cpy! literal_16 func_print_bin_counter;
+
+    func_print_bin_check_msb:
+        jltz! func_print_bin_a func_print_bin_print_1;
+
+    func_print_bin_print_0:
+        ascii_0 IO;
+        jmp! func_print_bin_shift;
+
+    func_print_bin_print_1:
+        ascii_1 IO;
     
-    push! b;
-    jmp! func_add;
+    func_print_bin_shift:
+        p1 func_print_bin_counter func_print_bin_return;
+        double! func_print_bin_a;
+        jmp! func_print_bin_check_msb;
     
+    func_print_bin_return:
+        ascii_lf IO;
+        ascii_cr IO;
+        jmp! func_print_bin;
+
     .data
-        a: 0
-        b: 0
+        func_print_bin_a: 0
+        func_print_bin_counter: 0
     .endd
 
 
 
-test:
-    clr! a;
-    IO a; 
+func_print_dec:
+    subroutine_boilerplate!;
+    pop! func_print_dec_input;
     push! a;
-    clr! a;
-    IO a; 
-    push! a;
-    call_subroutine! func_add;
-    pull! a;
+    push! counter;
+    clr! ones;
+    clr! tens;
+    clr! hund;
+    clr! thou;
+    clr! tthou;
+    cpy! literal_16 counter;
+
+func_print_dec_shift:
+    double_dabble_add_3! thou;
+    double_dabble_add_3! hund;
+    double_dabble_add_3! tens;
+    double_dabble_add_3! ones;
+
+    double! tthou;
+    quarter_word_lshift_overflow! thou tthou;
+    quarter_word_lshift_overflow! hund thou;
+    quarter_word_lshift_overflow! tens hund;
+    quarter_word_lshift_overflow! ones tens;
+    lshift_overflow! input ones;
+
+    subleq! p1 counter func_print_dec_cleanup;
+    jmp! func_print_dec_shift;
+
+func_print_dec_cleanup:
+    cpy! ascii_0 a;
+    add! tthou a;
     a IO;
+    cpy! ascii_0 a;
+    add! thou a;
+    a IO;
+    cpy! ascii_0 a;
+    add! hund a;
+    a IO;
+    cpy! ascii_0 a;
+    add! tens a;
+    a IO;
+    cpy! ascii_0 a;
+    add! ones a;
+    a IO;
+    newline!;
 
+    pop! a;
+    pop! counter;
+    jmp! func_print_dec;
 
-    z z HALT; 
+.data
+    func_print_dec_input: 0
+    ones: 0
+    tens: 0
+    hund: 0
+    thou: 0
+    tthou: 0
+.endd
+
+    
+test:    
+    clr! input;
+    IO input;
+    push! input;
+    call_subroutine! func_print_dec;
+    jmp! test;
+
 
 
 .data
+    counter: 16
 
     a: 0
-    stack: 0 0 0 0 0
+    b: 0
+    c: 0
+    d: 0
+    input: 0
+    stack: 0 0 0 0 0 0 0 0 0 0
     stack_ptr: stack
     dest: 0
 
@@ -274,7 +438,16 @@ test:
 
     tmp: 0
 
+    literal_2: 2
+    literal_3: 3
+    literal_4: 4
+    literal_5: 5
     literal_16: 16
     literal_15: 15
-.endd
+    literal_256: 256
 
+    ascii_lf: 10
+    ascii_cr: 13
+    ascii_0: 48
+    ascii_1: 49
+.endd
