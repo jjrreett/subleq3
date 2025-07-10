@@ -74,8 +74,7 @@ class _Macro:
 
         # Replace argument name with its actual value
         instructions = [
-            arg_map.get(instr, instr) if isinstance(instr, str) else instr
-            for instr in instructions
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
         ]
         for instr in instructions:
             if not isinstance(instr, (str, _Next, int, _Label)):
@@ -107,6 +106,26 @@ class _SubleqTransformer(Transformer):
             instructions.extend(item)
         return instructions
 
+    def instruction(self, items) -> list[str | _Next | _Label]:
+        if not items or items[0] is None:
+            return None
+
+        if len(items) == 2:
+            name, args = items
+        else:
+            name = items[0]
+            args = []
+
+        if name in self.macros:
+            return self.macros[name].expand(args)
+        if name == "subleq":
+            assert len(args) == 3, f"subleq opcode requires 3 arguments, {len(args)}"
+            return args
+        raise CompilationError(f"Opcode {name!r} not recognized.")
+
+    def args(self, items) -> list[str | _Next | int]:
+        return list(items)
+
     def macro_args(self, items) -> Iterable[str]:  # noqa: ANN001
         return items
 
@@ -124,20 +143,11 @@ class _SubleqTransformer(Transformer):
         name = items[0]
         return _Label(name=name)
 
-    def single_arg(self, items) -> tuple[str | _Next]:  # noqa: ANN001
-        a = items[0]
-        return a, a, _Next()
-
-    def double_arg(self, items) -> tuple[str | _Next]:  # noqa: ANN001
-        a, b = items
-        return a, b, _Next()
-
-    def triple_arg(self, items) -> tuple[str | _Next]:  # noqa: ANN001
-        a, b, c = items
-        return a, b, c
-
     def data_block(self, items) -> tuple[str | _Label]:  # noqa: ANN001
         return items
+
+    def stmt(self, items) -> list:
+        return []
 
     def IDENT(self, token) -> str:  # noqa: ANN001, N802
         return token.value

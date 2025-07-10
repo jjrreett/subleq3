@@ -9,24 +9,20 @@ start: stmt*
     | directive_block
     | macro_call
     | instruction
+    | _NEWLINE
 
 label_def: IDENT ":"
 
 ?directive_block: data_block | macro_block
 
-data_block: ".data" (label_def | value)* ".endd"
-macro_block: ".macro" IDENT "!"  macro_args ";" stmt+ ".endm"
+data_block: ".data" (label_def | value | _NEWLINE)* ".endd"
+macro_block: ".macro" IDENT  macro_args _NEWLINE stmt+ ".endm"
 macro_args: IDENT*
 
 macro_call: IDENT "!" macro_args ";"
 
-?instruction: short1
-           | short2
-           | full
-
-short1: value ";"               -> single_arg
-short2: value value ";"         -> double_arg
-full:   value value value ";"   -> triple_arg
+instruction: IDENT args? _NEWLINE
+args: value ("," value)*
 
 ?value: IDENT | NUMBER | QMARK
 NUMBER: "-"? DEC_INT | HEX_INT | BIN_INT
@@ -39,6 +35,8 @@ BINDIGIT: "0" | "1"
 
 QMARK: "?"
 
+_NEWLINE: "\n"
+
+
 %ignore /[ \t]+/
-%ignore /\n+/
 %ignore SH_COMMENT
