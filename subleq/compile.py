@@ -130,14 +130,11 @@ class _SubleqTransformer(Transformer):
         return items
 
     def macro_block(self, items) -> Iterable:  # noqa: ANN001
-        ident, macro_args, *instructions = items
-        m = _Macro(ident, macro_args, self.instructions(instructions))
+        defines, *instructions = items
+        ident, *args = defines
+        m = _Macro(ident, args, self.instructions(instructions))
         self.macros[ident] = m
         return []
-
-    def macro_call(self, items) -> list[str | _Next | _Label]:  # noqa: ANN001
-        ident, args = items
-        return self.macros[ident].expand(args)
 
     def label_def(self, items) -> _Label:  # noqa: ANN001
         name = items[0]

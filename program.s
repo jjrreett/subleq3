@@ -1,19 +1,19 @@
 
 
-.macro jmp a
+.macro jmp, a
     subleq z, z, a
 .endm
 
-.macro clr a
+.macro clr, a
     subleq a, a, ?
 .endm
 
-.macro sub a b
+.macro sub, a, b
     subleq a, b, ?
 .endm
 
 ;;;;;;;; b = b + a ;;;;;;;;
-.macro add a b
+.macro add, a, b
     sub a, z
     sub z, b
     clr z
@@ -21,19 +21,19 @@
 
 
 ;;;;;;;; b = a ;;;;;;;;
-.macro cpy a b
+.macro cpy, a, b
     clr b
     add a, b
 .endm
 
 
 ;;;;;;;; a = a - 1 ;;;;;;;;
-.macro dec a
+.macro dec, a
     sub p1, a
 .endm
 
 ;;;;;;;; a = a + 1 ;;;;;;;;
-.macro inc a
+.macro inc, a
     sub m1, a
 .endm
 
@@ -53,12 +53,12 @@
 ; BVS     | Branch if Overflow Set      | -
 
 ;;;;;;;; if a <= 0: jmp b ;;;;;;;;
-.macro bleq a b
+.macro bleq, a, b
     subleq z, a, b
 .endm
 
 ;;;;;;;; if a > 0: jmp b ;;;;;;;;
-.macro bgt a b
+.macro bgt, a, b
                             ; not(a <= 0) -> jump
     bleq a, return        ; a <= 0, don't take the jump to b
     jmp b
@@ -66,7 +66,7 @@ return:
 .endm
 
 ;;;;;;;; if a == 0: jmp b ;;;;;;;;
-.macro beq a b
+.macro beq, a, b
                             ; not(a > 0) and (a+1 > 0) -> jump
     bgt a, return          ; a > 0, do not jump
     inc a
@@ -80,14 +80,14 @@ return:
 .endm
 
 ;;;;;;;; if a >= 0: jmp b ;;;;;;;;
-.macro bpl a b
+.macro bpl, a, b
                             ; (a > 0) or (a == 0) -> jump
     bgt a, b              ; a > 0, jump
     beq a, b              ; a == 0, jump
 .endm
 
 ;;;;;;;; if a <  0: jmp b ;;;;;;;;
-.macro bmi a b
+.macro bmi, a, b
                             ; not(a == 0) and (a <= 0) -> jump
     beq a, return         ; a == 0: therefor not a < 0, return
     bleq a, b             ; a <= 0, but not 0 -> a < 0, take the jump
@@ -97,7 +97,7 @@ return:
 
 
 ;;;;;;;; b = b * a ;;;;;;;;
-.macro mul a b
+.macro mul, a, b
         inc a
     loop:
         subleq p1, a, break           ; decrement 'a' by 1, break if 0
@@ -113,13 +113,13 @@ return:
 .endm
 
 ;;;;;;;; a = a + a ;;;;;;;;
-.macro dbl a
+.macro dbl, a
 
     add a, a
 .endm
 
 ;;;;;;;; b = b << a ;;;;;;;;
-.macro lsl a b
+.macro lsl, a, b
 
         cpy a, counter
         inc counter
@@ -133,7 +133,7 @@ return:
 
 
 ;;;;;;;; b = b >> a ;;;;;;;;
-.macro lsr a b
+.macro lsr, a, b
         add literal_16, count
         sub b, count
         inc count
@@ -172,7 +172,7 @@ return:
 .endm
 
 ;;;;;;; b = b * a ;;;;;;;;; WIP
-.macro fmul a b
+.macro fmul, a, b
     while:
         bleq b, return           ; if b <= 0: return
         cpy b, tmp
@@ -199,7 +199,7 @@ return:
 ; ptr is the addrs of the -value (as long as we negate the number going in, we can negate it going out)
 ; executes the date block, falls through
 ;;;;;;;; dest = *ptr ;;;;;;;;
-.macro rpt ptr dest
+.macro rpt, ptr, dest
     clr code_a
     clr code_a0
     clr code_a1
@@ -223,7 +223,7 @@ return:
 .endm
 
 ;;;;;;;; *ptr = src ;;;;;;;;
-.macro wpt src ptr
+.macro wpt, src, ptr
     cpy ptr, code_b
     jmp code_a
 
@@ -234,17 +234,17 @@ return:
     .endd
 .endm
 
-.macro psh a
+.macro psh, a
     wpt a, stack_ptr
     inc stack_ptr
 .endm
 
-.macro pop a
+.macro pop, a
     dec stack_ptr
     rpt stack_ptr, a
 .endm
 
-.macro jsr func_addr
+.macro jsr, func_addr
     wpt return_addr, stack_ptr
     inc stack_ptr
     jmp func_addr
@@ -255,7 +255,6 @@ return:
 ; the first pass pops the return addr off the stack
 ; the second pass actually returns
 .macro rts
-
         bleq second_pass, setup       ; if second_pass <= 0 then jmp to setup 
         clr second_pass               ;     else clean up second_pass and ...
         .data
@@ -271,9 +270,7 @@ return:
 .endm
 
 ;;;;;;;; 4 bit shift, inc output if overflow ;;;;;;;;
-.macro byte_lshift_o input output
-
-                           
+.macro nibble_lslo, input, output                
         dbl input
         cpy input, tmp
         dbl tmp
@@ -297,7 +294,7 @@ return:
 .endm
 
 ;;;;;;;; 8 bit shift, inc output if overflow ;;;;;;;;
-.macro half_word_lshift_overflow input output
+.macro byte_lslo, input, output
         dbl input
         cpy input, tmp
         dbl tmp
@@ -316,7 +313,7 @@ return:
 .endm
 
 ;;;;;;;; 16 bit shift, inc output if overflow ;;;;;;;;
-.macro lshift_overflow input output
+.macro lslo, input, output
         bpl input, no_overflow
         inc output             ; inc output if overflow, always shift input
     no_overflow:
@@ -329,7 +326,7 @@ return:
     sub ascii_cr, IO
 .endm
 
-.macro double_dabble_add_3 x
+.macro double_dabble_add_3, x
     cpy x, tmp
     subleq literal_4, tmp, return      ; if x ≤ 4, skip
     add literal_3, x                  ; else x += 3
@@ -401,11 +398,11 @@ func_print_dec_shift:
     double_dabble_add_3 ones
 
     dbl tthou
-    byte_lshift_o thou, tthou
-    byte_lshift_o hund, thou
-    byte_lshift_o tens, hund
-    byte_lshift_o ones, tens
-    lshift_overflow input, ones
+    nibble_lslo thou, tthou
+    nibble_lslo hund, thou
+    nibble_lslo tens, hund
+    nibble_lslo ones, tens
+    lslo input, ones
 
     subleq p1, counter, func_print_dec_cleanup
     jmp func_print_dec_shift

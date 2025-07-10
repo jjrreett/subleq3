@@ -7,7 +7,6 @@ start: stmt*
 
 ?stmt: label_def
     | directive_block
-    | macro_call
     | instruction
     | _NEWLINE
 
@@ -16,10 +15,8 @@ label_def: IDENT ":"
 ?directive_block: data_block | macro_block
 
 data_block: ".data" (label_def | value | _NEWLINE)* ".endd"
-macro_block: ".macro" IDENT  macro_args _NEWLINE stmt+ ".endm"
-macro_args: IDENT*
+macro_block: ".macro" args _NEWLINE stmt+ ".endm"
 
-macro_call: IDENT "!" macro_args ";"
 
 instruction: IDENT args? _NEWLINE
 args: value ("," value)*
