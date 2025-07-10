@@ -39,4 +39,4 @@ _NEWLINE: "\n"
 
 
 %ignore /[ \t]+/
-%ignore SH_COMMENT
+%ignore /;[^\n]*/
