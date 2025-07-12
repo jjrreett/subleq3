@@ -74,7 +74,8 @@ class _Macro:
 
         # Replace argument name with its actual value
         instructions = [
-            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr
+            for instr in instructions
         ]
         for instr in instructions:
             if not isinstance(instr, (str, _Next, int, _Label)):

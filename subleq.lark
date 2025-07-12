@@ -25,8 +25,8 @@ args: value ("," value)*
 NUMBER: "-"? DEC_INT | HEX_INT | BIN_INT
 
 DEC_INT: DIGIT+
-HEX_INT: "0x" HEXDIGIT+
-BIN_INT: "0b" BINDIGIT+
+HEX_INT: "$" HEXDIGIT+
+BIN_INT: "%" BINDIGIT+
 
 BINDIGIT: "0" | "1"
 
