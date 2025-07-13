@@ -13,6 +13,7 @@ from rich import print  # noqa: A004
 
 from .subleq import Lark_StandAlone, Transformer
 from . import const
+import contextlib
 
 DEBUG = True
 
@@ -74,8 +75,7 @@ class _Macro:
 
         # Replace argument name with its actual value
         instructions = [
-            arg_map.get(instr, instr) if isinstance(instr, str) else instr
-            for instr in instructions
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
         ]
         for instr in instructions:
             if not isinstance(instr, (str, _Next, int, _Label)):
@@ -130,19 +130,9 @@ class _SubleqTransformer(Transformer):
     def macro_args(self, items) -> Iterable[str]:  # noqa: ANN001
         return items
 
-    def macro_block(self, items) -> Iterable:  # noqa: ANN001
-        defines, *instructions = items
-        ident, *args = defines
-        m = _Macro(ident, args, self.instructions(instructions))
-        self.macros[ident] = m
-        return []
-
     def label_def(self, items) -> _Label:  # noqa: ANN001
         name = items[0]
         return _Label(name=name)
-
-    def data_block(self, items) -> tuple[str | _Label]:  # noqa: ANN001
-        return items
 
     def stmt(self, items) -> list:
         return []
@@ -151,10 +141,68 @@ class _SubleqTransformer(Transformer):
         return token.value
 
     def NUMBER(self, token) -> int:  # noqa: ANN001, N802
-        return eval(token.value)  # noqa: S307
+        val: str = token.value
+        return eval(val.replace("$", "0x").replace("%", "0b"))  # noqa: S307
 
     def QMARK(self, token) -> int:  # noqa: ANN001, N802
         return _Next()
+
+    def ASCII_CHARS(self, token):
+        return [ord(char) for char in token]
+
+    def data(self, items) -> tuple[str | _Label]:  # noqa: ANN001
+        return items
+
+    def macro(self, items) -> Iterable:  # noqa: ANN001
+        defines, *instructions = items
+        ident, *args = defines
+        m = _Macro(ident, args, self.instructions(instructions))
+        self.macros[ident] = m
+        return []
+
+    def byte(self, items):
+        for x in items:
+            # assert x == x & 0xFF, f"The data in the '.byte' directive must be of size byte 0x{x:x}"
+            x = np.int8(x) if x < 0 else np.uint8(x)
+        return items
+
+    def word(self, items):
+        for x in items:
+            x = np.int16(x) if x < 0 else np.uint16(x)
+        return items
+
+    def dword(self, items):
+        expanded = []
+        for x in items:
+            # assert x == x & 0xFFFF_FFFF, (
+            #     f"The data in the '.dword' directive must be of size dword 0x{x:x}"
+            # )
+            x = np.int32(x) if x < 0 else np.uint32(x)
+            expanded.append((x >> 16))  # high word
+            expanded.append((x & 0xFFFF))  # low word
+        return expanded
+
+    def ascii(self, items):
+        if len(items) == 0:
+            return None
+        if len(items) == 1:
+            return items[0]
+        assert False, "This code should be unreachable"
+
+    def asciiz(self, items):
+        if len(items) == 0:
+            return [0]
+        if len(items) == 1:
+            return items[0] + [0]
+        assert False, "This code should be unreachable"
+
+    def fill(self, items):
+        count, value = items
+        return [value] * count
+
+    def reserve(self, items):
+        (count,) = items
+        return self.fill((count, 0))
 
 
 def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
@@ -184,6 +232,8 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     data = np.zeros((len(code),), dtype=np.uint16)
 
     for i, x in enumerate(code):
+        with contextlib.suppress(ValueError):
+            x = int(x)
         if not isinstance(x, int):
             msg = f"The label {x!r} was not reduced to an int"
             raise CompilationError(msg)

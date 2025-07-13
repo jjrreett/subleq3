@@ -450,35 +450,34 @@ test:
 
 
 
+counter:    .word 16
+a:          .word 0
+b:          .word 0
+c:          .word 0
+d:          .word 0
+input:      .word 0
+stack:      .res 256
+stack_ptr:  .data stack .endd
+z:          .word 0
+p1:         .word 1
+m1:         .word -1
+tmp:         .word 0
+literal_2:   .word 2
+literal_3:   .word 3
+literal_4:   .word 4
+literal_5:   .word 5
+literal_16:  .word 16
+literal_15:  .word 15
+literal_256: .word 256
+ascii_lf:    .word 10
+ascii_cr:    .word 13
+ascii_0:     .word 48
+ascii_1:     .word 49
 
-.data
-    counter: 16
-
-    a: 0
-    b: 0
-    c: 0
-    d: 0
-    input: 0
-    stack: 0 0 0 0 0 0 0 0 0 0
-    stack_ptr: stack
-    dest: 0
-
-    z: 0
-    p1: 1
-    m1: -1
-
-    tmp: 0
-
-    literal_2: 2
-    literal_3: 3
-    literal_4: 4
-    literal_5: 5
-    literal_16: 16
-    literal_15: 15
-    literal_256: 256
-
-    ascii_lf: 10
-    ascii_cr: 13
-    ascii_0: 48
-    ascii_1: 49
-.endd
+.byte $ff
+.word $1234
+.dword $12345678
+.ascii "Hello"
+.asciiz "World"
+.fill 10, $0000
+.res 10

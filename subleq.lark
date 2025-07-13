@@ -12,17 +12,32 @@ start: stmt*
 
 label_def: IDENT ":"
 
-?directive_block: data_block | macro_block
+?directive_block: data 
+                | macro
+                | byte
+                | word
+                | dword
+                | ascii
+                | asciiz
+                | fill
+                | reserve
 
-data_block: ".data" (label_def | value | _NEWLINE)* ".endd"
-macro_block: ".macro" args _NEWLINE stmt+ ".endm"
+data: ".data" (label_def | value | _NEWLINE)* ".endd" _NEWLINE
+macro: ".macro" args _NEWLINE stmt+ ".endm" _NEWLINE
+byte: ".byte"  NUMBER ("," NUMBER)* _NEWLINE
+word: ".word"  NUMBER ("," NUMBER)* _NEWLINE
+dword: ".dword"  NUMBER ("," NUMBER)* _NEWLINE
+ascii: ".ascii" _string _NEWLINE
+asciiz: ".asciiz" _string _NEWLINE
+fill: ".fill" NUMBER "," NUMBER _NEWLINE
+reserve: ".res" NUMBER _NEWLINE
 
 
 instruction: IDENT args? _NEWLINE
 args: value ("," value)*
 
 ?value: IDENT | NUMBER | QMARK
-NUMBER: "-"? DEC_INT | HEX_INT | BIN_INT
+NUMBER: "-"? (DEC_INT | HEX_INT | BIN_INT)
 
 DEC_INT: DIGIT+
 HEX_INT: "$" HEXDIGIT+
@@ -34,6 +49,10 @@ QMARK: "?"
 
 _NEWLINE: "\n"
 
+_string: "\"" ASCII_CHARS? "\""
+ASCII_CHARS: ASCII_CHAR+
+ASCII_CHAR: /[^"\\\n\r]/ | ESCAPED_CHAR
+ESCAPED_CHAR: "\\" /["\\nrt0]/
 
 %ignore /[ \t]+/
 %ignore /;[^\n]*/
