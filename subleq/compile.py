@@ -2,6 +2,7 @@
 """Compile subleq assembly into image in the format of np.ndarray."""
 
 import argparse
+import contextlib
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -12,10 +13,8 @@ import numpy as np
 from rich import print  # noqa: A004
 
 from .subleq import Lark_StandAlone, Transformer
-from . import const
-import contextlib
 
-DEBUG = True
+DEBUG = False
 
 
 class CompilationError(Exception):
@@ -46,36 +45,43 @@ class _Macro:
     call_counter = 0
 
     def expand(self, actual_args: Iterable[str]) -> list[str | _Next | _Label]:
+        actual_args = list(actual_args)
         if len(actual_args) != len(self.args):
             msg = f"Macro '{self.ident}' expects {len(self.args)} arguments, got {len(actual_args)}"
-            raise ValueError(msg)
+            raise CompilationError(msg)
 
         arg_map = dict(zip(self.args, actual_args, strict=False))
-        expanded = []
 
-        instructions = self.instructions
-        # find all local labels and compute the mangled form
-        labels = {}
-        for instr in instructions:
+        # Every label defined by a macro is private to that invocation. Keeping
+        # the mangled name local prevents macro internals from changing the
+        # caller's global-label scope. This is essential for nested macros.
+        labels: dict[str, str] = {}
+        for instr in self.instructions:
             if isinstance(instr, _Label):
-                mangled_name = f"{self.ident}_{self.call_counter}_{instr.name}"
-                labels[instr.name] = mangled_name
-        # replace local labels with mangled form
+                if instr.name in labels:
+                    msg = (
+                        f"Label {instr.name!r} is defined twice in macro {self.ident!r}"
+                    )
+                    raise CompilationError(msg)
+                base_name = instr.name.removeprefix("@")
+                labels[instr.name] = f"@{self.ident}_{self.call_counter}_{base_name}"
+
+        # Replace macro-private label definitions and references.
         instructions = [
             _Label(name=labels[instr.name])
             if isinstance(instr, _Label) and instr.name in labels
             else instr
             for instr in self.instructions
         ]
-        # replace idents referencing local labels with their mangled name
         instructions = [
             labels[instr] if isinstance(instr, str) and instr in labels else instr
             for instr in instructions
         ]
 
-        # Replace argument name with its actual value
+        # Replace argument names with the values supplied by the caller.
         instructions = [
-            arg_map.get(instr, instr) if isinstance(instr, str) else instr for instr in instructions
+            arg_map.get(instr, instr) if isinstance(instr, str) else instr
+            for instr in instructions
         ]
         for instr in instructions:
             if not isinstance(instr, (str, _Next, int, _Label)):
@@ -83,10 +89,6 @@ class _Macro:
                 raise TypeError(msg)
 
         self.call_counter += 1
-
-        debug(f"Macro {self.ident!r} expanded to:")
-        debug(instructions)
-
         return instructions
 
 
@@ -120,7 +122,9 @@ class _SubleqTransformer(Transformer):
         if name in self.macros:
             return self.macros[name].expand(args)
         if name == "subleq":
-            assert len(args) == 3, f"subleq opcode requires 3 arguments, {len(args)}"
+            if len(args) != 3:
+                msg = f"subleq opcode requires 3 arguments, got {len(args)}"
+                raise CompilationError(msg)
             return args
         raise CompilationError(f"Opcode {name!r} not recognized.")
 
@@ -146,9 +150,6 @@ class _SubleqTransformer(Transformer):
 
     def QMARK(self, token) -> int:  # noqa: ANN001, N802
         return _Next()
-
-    def ASCII_CHARS(self, token):
-        return [ord(char) for char in token]
 
     def data(self, items) -> tuple[str | _Label]:  # noqa: ANN001
         return items
@@ -204,40 +205,94 @@ class _SubleqTransformer(Transformer):
         (count,) = items
         return self.fill((count, 0))
 
+    def string(self, items):
+        return [ord(char) for char in items]
+
+    def LOCAL_LABEL(self, token):
+        return token.value
+
+    def value(self, items):
+        if len(items) != 2:
+            assert False, "Unreachable code"
+        return "".join(items)  # if it starts with an "@"
+
+    def local_label_def(self, items):
+        name = items[0]
+        return _Label(name="@" + name)
+
 
 def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     """Compile subleq assembly into image in the format of np.ndarray."""
-    parser = Lark_StandAlone()
+    parser = Lark_StandAlone(propagate_positions=True)
     tree = parser.parse(source)
     debug(tree)
     transformer = _SubleqTransformer()
     instructions = transformer.transform(tree)
     debug(instructions)
 
-    code = []
-    labels = const.get_labels()
+    # Labels do not occupy memory, so the first pass records their addresses
+    # while preserving the scope in which every emitted value appeared.
+    labels: dict[str, int] = {}
+    local_labels: dict[tuple[str, str], int] = {}
+    scoped_values: list[tuple[str | int, str]] = []
+    scope = "<start of file>"
+    address = 0
+
     for inst in instructions:
         if isinstance(inst, _Label):
+            if inst.name.startswith("@"):
+                key = (scope, inst.name)
+                if key in local_labels:
+                    msg = (
+                        f"Local label {inst.name!r} is defined twice in scope {scope!r}"
+                    )
+                    raise CompilationError(msg)
+                local_labels[key] = address
+                continue
+
             if inst.name in labels:
-                raise CompilationError(f"Label {inst.name!r} used twice")
-            labels[inst.name] = len(code)
+                raise CompilationError(f"Global label {inst.name!r} is defined twice")
+            labels[inst.name] = address
+            scope = inst.name
             continue
+
         if isinstance(inst, _Next):
-            code.append(len(code) + 1)
-            continue
-        code.append(inst)
+            value: str | int = address + 1
+        else:
+            value = inst
+        scoped_values.append((value, scope))
+        address += 1
 
-    code = [labels.get(c, c) for c in code]
+    debug("Global labels", labels, sep="\n")
+    debug("Local labels", local_labels, sep="\n")
 
-    data = np.zeros((len(code),), dtype=np.uint16)
+    # Resolve references in the scope captured at their source position.
+    machine_code: list[int] = []
+    for value, value_scope in scoped_values:
+        if isinstance(value, str):
+            if value.startswith("@"):
+                key = (value_scope, value)
+                if key not in local_labels:
+                    msg = (
+                        f"Local label {value!r} is not defined in scope {value_scope!r}"
+                    )
+                    raise CompilationError(msg)
+                value = local_labels[key]
+            else:
+                if value not in labels:
+                    raise CompilationError(f"Global label {value!r} is not defined")
+                value = labels[value]
 
-    for i, x in enumerate(code):
-        with contextlib.suppress(ValueError):
-            x = int(x)
-        if not isinstance(x, int):
-            msg = f"The label {x!r} was not reduced to an int"
+        with contextlib.suppress(TypeError, ValueError):
+            value = int(value)
+        if not isinstance(value, int):
+            msg = f"Value {value!r} could not be reduced to an integer"
             raise CompilationError(msg)
-        assert isinstance(x, int), f"x must be an int {x!r}"
+        machine_code.append(value)
+
+    data = np.zeros((len(machine_code),), dtype=np.uint16)
+
+    for i, x in enumerate(machine_code):
         data[i] = np.uint16(x % (1 << 16))
 
     return data, labels

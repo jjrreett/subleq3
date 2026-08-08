@@ -5,12 +5,14 @@
 
 start: stmt*
 
-?stmt: label_def
+?stmt: local_label_def
+    | label_def
     | directive_block
     | instruction
     | _NEWLINE
 
 label_def: IDENT ":"
+local_label_def: "@" IDENT ":"
 
 ?directive_block: data 
                 | macro
@@ -22,13 +24,13 @@ label_def: IDENT ":"
                 | fill
                 | reserve
 
-data: ".data" (label_def | value | _NEWLINE)* ".endd" _NEWLINE
+data: ".data" (local_label_def | label_def | value | _NEWLINE)* ".endd" _NEWLINE
 macro: ".macro" args _NEWLINE stmt+ ".endm" _NEWLINE
 byte: ".byte"  NUMBER ("," NUMBER)* _NEWLINE
 word: ".word"  NUMBER ("," NUMBER)* _NEWLINE
 dword: ".dword"  NUMBER ("," NUMBER)* _NEWLINE
-ascii: ".ascii" _string _NEWLINE
-asciiz: ".asciiz" _string _NEWLINE
+ascii: ".ascii" string _NEWLINE
+asciiz: ".asciiz" string _NEWLINE
 fill: ".fill" NUMBER "," NUMBER _NEWLINE
 reserve: ".res" NUMBER _NEWLINE
 
@@ -36,9 +38,9 @@ reserve: ".res" NUMBER _NEWLINE
 instruction: IDENT args? _NEWLINE
 args: value ("," value)*
 
-?value: IDENT | NUMBER | QMARK
+?value: LOCAL_LABEL? IDENT | NUMBER | QMARK
 NUMBER: "-"? (DEC_INT | HEX_INT | BIN_INT)
-
+LOCAL_LABEL: "@"
 DEC_INT: DIGIT+
 HEX_INT: "$" HEXDIGIT+
 BIN_INT: "%" BINDIGIT+
@@ -49,8 +51,7 @@ QMARK: "?"
 
 _NEWLINE: "\n"
 
-_string: "\"" ASCII_CHARS? "\""
-ASCII_CHARS: ASCII_CHAR+
+string: "\"" ASCII_CHAR* "\""
 ASCII_CHAR: /[^"\\\n\r]/ | ESCAPED_CHAR
 ESCAPED_CHAR: "\\" /["\\nrt0]/
 
