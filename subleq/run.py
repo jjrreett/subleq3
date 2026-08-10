@@ -1,20 +1,19 @@
 # noqa: INP001
-"""Emulates a subleq computer from an np.ndarray based image."""
+"""Compile or load programs and execute them in the SUBLEQ emulator."""
 
 import argparse
-
-# from rich import print  # noqa: A004
 import json
+import os
+import sys
+import time
 from collections.abc import Sequence
 from functools import wraps
 from pathlib import Path
 
 import numpy as np
-import sys
-import os
-import time
 
 from . import const
+from .compile import subleq_compile_files
 
 DEBUG = True
 
@@ -104,43 +103,97 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
         pc += 3
 
 
-def configure_parser(parser: argparse.ArgumentParser) -> None:
-    """Add emulator arguments to a standalone or subcommand parser."""
-    parser.add_argument("input", type=Path, help="Input source file")
-    parser.add_argument(
-        "-l",
-        "--labels",
-        action="store_true",
-        help="Input labels file",
-        dest="labels",
-    )
+def add_debug_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the shared emulator debug option."""
     parser.add_argument(
         "-g",
         dest="debug",
         action="store_true",
         help="Enable debug mode",
     )
-    parser.set_defaults(command_handler=execute)
 
 
-def execute(args: argparse.Namespace) -> None:
-    """Run an image using parsed command-line arguments."""
+def configure_source_parser(parser: argparse.ArgumentParser) -> None:
+    """Add arguments for compiling and running assembly source."""
+    parser.add_argument(
+        "input",
+        type=Path,
+        nargs="+",
+        help="Input source files, linked in the order given",
+    )
+    add_debug_argument(parser)
+    parser.set_defaults(command_handler=execute_sources)
 
+
+def configure_image_parser(parser: argparse.ArgumentParser) -> None:
+    """Add arguments for running an existing NumPy image."""
+    parser.add_argument("input", type=Path, help="Input NumPy image")
+    parser.add_argument(
+        "-l",
+        "--labels",
+        action="store_true",
+        help="Load the matching labels file",
+        dest="labels",
+    )
+    add_debug_argument(parser)
+    parser.set_defaults(command_handler=execute_image)
+
+
+def execute_data(
+    data: np.ndarray,
+    labels: dict[str, int],
+    *,
+    debug_enabled: bool,
+    display_name: str,
+) -> None:
+    """Run compiled memory and print an execution summary."""
     global DEBUG  # noqa: PLW0603
-    DEBUG = args.debug
+    DEBUG = debug_enabled
 
+    t = time.time()
+    print("---------------------------------", flush=True)
+    count = subleq(data, labels)
+    print("\n---------------------------------")
+    print(
+        f"{display_name} halted in {count} instructions, "
+        f"{time.time() - t:.3f} seconds"
+    )
+
+
+def execute_sources(args: argparse.Namespace) -> None:
+    """Compile linked assembly sources in memory and run them."""
+    data, labels = subleq_compile_files(args.input)
+    execute_data(
+        data,
+        labels,
+        debug_enabled=args.debug,
+        display_name=", ".join(str(path) for path in args.input),
+    )
+
+
+def execute_image(args: argparse.Namespace) -> None:
+    """Load and run an existing NumPy image."""
     data = np.load(args.input)
-
     labels = {}
     if args.labels:
         with args.input.with_suffix(".labels").open("r") as fp:
             labels = json.load(fp)
+    execute_data(
+        data,
+        labels,
+        debug_enabled=args.debug,
+        display_name=str(args.input),
+    )
 
-    t = time.time()
-    print("---------------------------------")
-    count = subleq(data, labels)
-    print("\n---------------------------------")
-    print(f"{args.input} halted in {count} instructions, {time.time() - t:.3f} seconds")
+
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Add standalone emulator arguments for backward compatibility."""
+    configure_image_parser(parser)
+
+
+def execute(args: argparse.Namespace) -> None:
+    """Run an image for backward-compatible module callers."""
+    execute_image(args)
 
 
 def main(argv: Sequence[str] | None = None) -> None:

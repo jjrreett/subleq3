@@ -24,10 +24,10 @@ class CommandLineTests(unittest.TestCase):
             cli.main(["--help"])
 
         self.assertEqual(raised.exception.code, 0)
-        for command in ("compile", "run", "gen-grammar", "lsp"):
+        for command in ("compile", "run", "emulate", "gen-grammar", "lsp"):
             self.assertIn(command, output.getvalue())
 
-    def test_compile_and_run_subcommands(self) -> None:
+    def test_compile_and_emulate_subcommands(self) -> None:
         source = """\
 start:
     subleq value, value, 0
@@ -43,12 +43,29 @@ value: .word 0
 
             with contextlib.redirect_stdout(io.StringIO()):
                 cli.main(["compile", str(source_path), "-o", str(image_path)])
-                cli.main(["run", str(image_path)])
+                cli.main(["emulate", str(image_path)])
 
             self.assertTrue(image_path.exists())
             np.testing.assert_array_equal(
                 np.load(image_path), np.array([5, 5, 0, 0, 0, 0], dtype=np.uint16)
             )
+
+    def test_run_compiles_source_without_writing_an_image(self) -> None:
+        source = """\
+start:
+    subleq value, value, 0
+IO: .word 0
+INSPECT: .word 0
+value: .word 0
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "halt.s"
+            source_path.write_text(source)
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.main(["run", str(source_path)])
+
+            self.assertFalse(source_path.with_suffix(".npy").exists())
 
     def test_compile_links_multiple_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

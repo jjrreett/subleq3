@@ -34,10 +34,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = subcommands.add_parser(
         "run",
+        help="Compile and run assembly source",
+        description="Compile SUBLEQ assembly source and run it immediately",
+    )
+    emulator.configure_source_parser(run_parser)
+
+    emulate_parser = subcommands.add_parser(
+        "emulate",
         help="Run a compiled NumPy image",
         description="Run a compiled SUBLEQ NumPy image",
     )
-    emulator.configure_parser(run_parser)
+    emulator.configure_image_parser(emulate_parser)
 
     grammar_parser = subcommands.add_parser(
         "gen-grammar",

@@ -176,8 +176,8 @@ stack_ptr: .data stack .endd
 
 ## Macros
 
-Macros provide the larger instruction vocabulary used by `program.s`. Define
-one with `.macro` and `.endm`:
+Macros provide the larger instruction vocabulary used by
+`programs/program/program.s`. Define one with `.macro` and `.endm`:
 
 ```asm
 .macro jmp, target
@@ -285,34 +285,41 @@ The project requires Python 3.12 or newer and uses `uv` for its environment.
 uv sync
 ```
 
-Compile an assembly file:
+Compile and immediately run an assembly program:
 
 ```powershell
-uv run subleq compile program.s
+uv run subleq run programs/program/program.s
 ```
 
-This creates `program.npy`. Add `-l` to also write `program.labels`, or use
-`-o` to select another output name:
+`run` links and compiles its source inputs in memory, then starts the emulator.
+It automatically supplies labels to debug mode, so no intermediate image or
+labels file is needed. Pass multiple source files in link order when required,
+and add `-g` for instruction-level diagnostics.
+
+Use `compile` when a reusable NumPy image is wanted:
 
 ```powershell
-uv run subleq compile program.s -o build/program.npy -l
+uv run subleq compile programs/program/program.s -l
 ```
 
-Run the resulting image:
+This writes `program.npy` beside the source. Add `-l` to also write
+`program.labels`, or use `-o` to select another output path. Run an existing
+image with `emulate`, which preserves the original `run` workflow:
 
 ```powershell
-uv run subleq run program.npy -l
+uv run subleq emulate programs/program/program.npy -l
 ```
 
-`-l` loads the matching labels file for more useful debug output. Add `-g` to
-either command to enable its verbose diagnostics.
+For `emulate`, `-l` loads the matching labels file and `-g` enables verbose
+execution diagnostics.
 
 Install the complete toolchain as one editable `uv` tool while developing:
 
 ```powershell
 uv tool install --force -e .
-subleq compile program.s -l
-subleq run program.npy -l
+subleq run programs/program/program.s
+subleq compile programs/program/program.s -l
+subleq emulate programs/program/program.npy -l
 ```
 
 The other subcommands are `subleq gen-grammar` and `subleq lsp`. Run
@@ -411,10 +418,10 @@ Scoped local labels are implemented and covered by automated compiler tests,
 including forward and backward references, repeated macro calls, caller-local
 arguments, and nested macros.
 
-- `program.s` compiles to a 1,926-word image.
-- `test_local_labels.s` is a preserved, intermediate experiment; the focused
-  regression tests in `tests/test_compile.py` are the authoritative local-label
-  suite.
-- `ode.s` now gets through local-label resolution. Its next compiler error is
-  an unrelated missing global constant (`literal_16`), and its numerical model
-  remains unfinished.
+- `programs/program/program.s` compiles to a 2,042-word image.
+- `programs/test_local_labels/test_local_labels.s` is a preserved, intermediate
+  experiment; the focused regression tests in `tests/test_compile.py` are the
+  authoritative local-label suite.
+- `programs/ode/ode.s` now gets through local-label resolution. Its next
+  compiler error is an unrelated missing global constant (`literal_16`), and
+  its numerical model remains unfinished.
