@@ -1,6 +1,7 @@
 """Compiler behavior tests."""
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -107,6 +108,14 @@ root:
 """
         self.assert_compiles_to(source, [0, 0, 3, 3, 5])
 
+    def test_string_directives_decode_escapes(self) -> None:
+        source = '.ascii "A\\n\\t\\"\\\\"\n.asciiz "B\\r\\0"\n'
+
+        self.assert_compiles_to(
+            source,
+            [ord("A"), 10, 9, ord('"'), ord("\\"), ord("B"), 13, 0, 0],
+        )
+
     def test_undefined_local_label_has_clear_error(self) -> None:
         with self.assertRaisesRegex(
             CompilationError,
@@ -142,6 +151,22 @@ zero:
             run.DEBUG = previous_debug
 
         self.assertEqual(instruction_count, 2)
+
+
+class RuntimeInputTests(unittest.TestCase):
+    def test_io_read_does_not_add_a_host_prompt(self) -> None:
+        data = np.array([3, 5, 0, 0, 0, 0], dtype=np.uint16)
+
+        previous_debug = run.DEBUG
+        run.DEBUG = False
+        try:
+            with mock.patch("builtins.input", return_value="-7") as read_input:
+                instruction_count = run.subleq(data, {})
+        finally:
+            run.DEBUG = previous_debug
+
+        read_input.assert_called_once_with()
+        self.assertEqual(instruction_count, 1)
 
 
 if __name__ == "__main__":

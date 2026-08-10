@@ -37,8 +37,9 @@ IO:      .word 0        ; address 3
 INSPECT: .word 0        ; address 4
 ```
 
-- Address `3` (`IO`) is memory-mapped character I/O. Reading from it prompts
-  for an integer; subtracting a value into it writes that value as one byte.
+- Address `3` (`IO`) is memory-mapped character I/O. Reading from it waits for
+  an integer; subtracting a value into it writes that value as one byte. Programs
+  are responsible for displaying their own input prompt.
 - Address `4` (`INSPECT`) prints a value in decimal, hexadecimal, and binary.
 - Address `0` is also the halt target.
 

@@ -150,6 +150,46 @@
     sub ascii_cr, IO
 .endm
 
+; `read_word pointer, destination`
+;
+; Read the word addressed by `pointer` without modifying the source word.
+.macro read_word, pointer, destination
+    cpy pointer, @source
+    clr destination
+    clr z
+    jmp @source
+
+    .data
+        @source: 0
+        z
+        ?
+    .endd
+
+    sub z, destination
+    clr z
+.endm
+
+; `print_asciiz string`
+;
+; Copy a null-terminated string to the memory-mapped character output.
+; The pointer is reset on every expansion, so the same call can run repeatedly.
+.macro print_asciiz, string
+    cpy @string_address, @pointer
+@next:
+    read_word @pointer, @character
+    beq @character, @return
+    sub @character, IO
+    inc @pointer
+    jmp @next
+
+    .data
+        @string_address: string
+        @pointer: 0
+        @character: 0
+    .endd
+@return:
+.endm
+
 .macro double_dabble_add_3, x
     cpy x, tmp
     subleq literal_4, tmp, return      ; if x ≤ 4, skip
@@ -162,7 +202,7 @@ return:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-jmp test
+jmp boot
 IO:         .word $00       ; expected to be at addr 1
 INSPECT:    .word $00       ; expected to be at addr 2
 AC:         .word $00       ; accumulator
@@ -262,6 +302,9 @@ func_print_dec_cleanup:
     thou: 0
     tthou: 0
 .endd
+boot:
+    print_asciiz boot_prompt
+    jmp test
 
 test:    
     clr input
@@ -295,6 +338,7 @@ ascii_lf:    .word 10
 ascii_cr:    .word 13
 ascii_0:     .word 48
 ascii_1:     .word 49
+boot_prompt: .asciiz "Welcome to the Subleq CPU Emulator!\n"
 
 .byte $ff
 .word $1234

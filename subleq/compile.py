@@ -17,6 +17,15 @@ from .subleq import Lark_StandAlone, Transformer, VisitError
 
 DEBUG = False
 
+_STRING_ESCAPES = {
+    r'\"': '"',
+    r"\\": "\\",
+    r"\n": "\n",
+    r"\r": "\r",
+    r"\t": "\t",
+    r"\0": "\0",
+}
+
 
 class CompilationError(Exception):
     """Failure to Compile."""
@@ -207,7 +216,7 @@ class _SubleqTransformer(Transformer):
         return self.fill((count, 0))
 
     def string(self, items):
-        return [ord(char) for char in items]
+        return [ord(_STRING_ESCAPES.get(str(char), str(char))) for char in items]
 
     def LOCAL_LABEL(self, token):
         return token.value

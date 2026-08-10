@@ -82,7 +82,7 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
         da, db = data[a], data[b]
 
         if a == const.IO_ADDR:
-            da = (-eval(input("> "))) % (1 << 16)  # noqa: S307
+            da = (-eval(input())) % (1 << 16)  # noqa: S307
 
         if b == const.IO_ADDR:
             os.write(1, bytes([da]))
