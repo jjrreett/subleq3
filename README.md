@@ -206,6 +206,76 @@ The larger sample program builds operations such as `clr`, `add`, `cpy`,
 subroutine calls, and decimal printing from `subleq` plus self-modifying code.
 These are library macros, not native opcodes.
 
+## Linking source files
+
+Project modules can be linked at the point where their definitions are needed:
+
+```asm
+.include "lib/arithmetic.s"
+.include "devices/terminal.s"
+```
+
+Quoted paths are resolved relative to the file containing the `.include`, so
+nested module trees remain relocatable. Includes may contain macros, code, and
+data. Everything is linked into one global symbol space; duplicate global
+labels and duplicate macros are errors. Local `@labels` retain their normal
+global-label or macro-invocation scope.
+
+The compiler also accepts multiple top-level inputs. They are linked in the
+order given:
+
+```powershell
+subleq compile macros.s runtime.s main.s -o program.npy -l
+```
+
+This is source linking rather than a relocatable-object format. Consequently,
+macro definitions must appear before their use, and emitted words retain
+source order. Put a macro-only module first, or use `.include` exactly where
+its definitions should become available.
+
+Recursive includes are supported. Missing files and include cycles are
+reported as link errors with the including filename and line.
+
+## Standard library
+
+Packaged library modules use angle brackets instead of quoted paths:
+
+```asm
+.include <core.s>
+```
+
+`core.s` is macro-only and therefore emits no words. It provides arithmetic,
+copy, and signed branch operations. Programs allocate three documented ABI
+cells named `z`, `p1`, and `m1`.
+
+```asm
+.include <core.s>
+
+start:
+    clr total
+    add input, total
+    jmp done
+done:
+    subleq z, z, 0
+
+z:     .word 0
+p1:    .word 1
+m1:    .word -1
+input: .word 7
+total: .word 0
+```
+
+`subroutine.s` adds pointer reads and writes, an upward-growing data stack, and
+`jsr`/`rts`. It imports `core.s` transitively and requires `stack` plus a
+`stack_ptr` cell. Standard modules are linked once, so importing both directly
+and transitively does not create duplicate macro definitions.
+
+The complete API reference—including signatures, required cells, effects,
+instruction counts, clobbers, and the subroutine calling convention—is in
+[`subleq/stdlib/README.md`](subleq/stdlib/README.md). The same structured
+comments live directly above each macro definition, making them available in
+LSP hovers.
+
 ## Building and running
 
 The project requires Python 3.12 or newer and uses `uv` for its environment.
@@ -341,9 +411,9 @@ including forward and backward references, repeated macro calls, caller-local
 arguments, and nested macros.
 
 - `program.s` compiles to a 1,926-word image.
-- `test_local_labels.s` is a preserved, intermediate experiment that still
-  uses unsupported syntax such as a macro parameter with `.word`; the current
-  tests in `tests/test_compile.py` replace it as the local-label test suite.
+- `test_local_labels.s` is a preserved, intermediate experiment; the focused
+  regression tests in `tests/test_compile.py` are the authoritative local-label
+  suite.
 - `ode.s` now gets through local-label resolution. Its next compiler error is
   an unrelated missing global constant (`literal_16`), and its numerical model
   remains unfinished.

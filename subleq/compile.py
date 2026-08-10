@@ -4,8 +4,7 @@
 import argparse
 import contextlib
 import json
-from collections.abc import Iterable
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -13,7 +12,8 @@ from pathlib import Path
 import numpy as np
 from rich import print  # noqa: A004
 
-from .subleq import Lark_StandAlone, Transformer
+from .link import link_sources
+from .subleq import Lark_StandAlone, Transformer, VisitError
 
 DEBUG = False
 
@@ -158,6 +158,8 @@ class _SubleqTransformer(Transformer):
     def macro(self, items) -> Iterable:  # noqa: ANN001
         defines, *instructions = items
         ident, *args = defines
+        if ident in self.macros:
+            raise CompilationError(f"Macro {ident!r} is defined twice")
         m = _Macro(ident, args, self.instructions(instructions))
         self.macros[ident] = m
         return []
@@ -226,7 +228,12 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     tree = parser.parse(source)
     debug(tree)
     transformer = _SubleqTransformer()
-    instructions = transformer.transform(tree)
+    try:
+        instructions = transformer.transform(tree)
+    except VisitError as error:
+        if isinstance(error.orig_exc, CompilationError):
+            raise error.orig_exc from error
+        raise
     debug(instructions)
 
     # Labels do not occupy memory, so the first pass records their addresses
@@ -297,9 +304,19 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     return data, labels
 
 
+def subleq_compile_files(inputs: Sequence[Path]) -> tuple[np.ndarray, dict[str, int]]:
+    """Link and compile one or more source files in the given order."""
+    return subleq_compile(link_sources(list(inputs)))
+
+
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Add compiler arguments to a standalone or subcommand parser."""
-    parser.add_argument("input", type=Path, help="Input source file")
+    parser.add_argument(
+        "input",
+        type=Path,
+        nargs="+",
+        help="Input source files, linked in the order given",
+    )
     parser.add_argument("-o", "--output", type=Path, help="Output filename")
     parser.add_argument(
         "-l",
@@ -323,12 +340,11 @@ def execute(args: argparse.Namespace) -> None:
     global DEBUG  # noqa: PLW0603
     DEBUG = args.debug
 
-    debug(f"Input file: {args.input!r}")
+    debug(f"Input files: {args.input!r}")
 
-    source = args.input.read_text()
-    data, labels = subleq_compile(source)
+    data, labels = subleq_compile_files(args.input)
 
-    output_filename = args.output or args.input
+    output_filename = args.output or args.input[0]
     output_filename = output_filename.with_suffix(".npy")
     if args.labels:
         lbstr = json.dumps(labels)

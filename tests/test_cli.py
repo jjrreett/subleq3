@@ -50,6 +50,30 @@ value: .word 0
                 np.load(image_path), np.array([5, 5, 0, 0, 0, 0], dtype=np.uint16)
             )
 
+    def test_compile_links_multiple_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            library_path = root / "library.s"
+            source_path = root / "main.s"
+            image_path = root / "linked.npy"
+            library_path.write_text("library: .word main\n")
+            source_path.write_text("main: .word library\n")
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.main(
+                    [
+                        "compile",
+                        str(library_path),
+                        str(source_path),
+                        "-o",
+                        str(image_path),
+                    ]
+                )
+
+            np.testing.assert_array_equal(
+                np.load(image_path), np.array([1, 0], dtype=np.uint16)
+            )
+
     def test_version_uses_package_version(self) -> None:
         output = io.StringIO()
         with (
