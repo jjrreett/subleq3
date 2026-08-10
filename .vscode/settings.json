@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "*.s": "subleq"
+  },
+  "[subleq]": {
+    "editor.inlayHints.enabled": "on"
+  }
+}

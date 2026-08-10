@@ -1,0 +1,102 @@
+{
+  "name": "subleq-language-support",
+  "displayName": "SUBLEQ Language Support",
+  "description": "Language support backed by the SUBLEQ language server.",
+  "version": "0.1.2",
+  "publisher": "local",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The extension launches the workspace's Python environment through uv."
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "keywords": [
+    "subleq",
+    "assembly",
+    "language server"
+  ],
+  "activationEvents": [
+    "onLanguage:subleq",
+    "onCommand:subleq.restartLanguageServer"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "subleq",
+        "aliases": [
+          "SUBLEQ",
+          "subleq"
+        ],
+        "extensions": [
+          ".subleq"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "subleq",
+        "scopeName": "source.subleq",
+        "path": "./syntaxes/subleq.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "subleq.restartLanguageServer",
+        "title": "SUBLEQ: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "SUBLEQ",
+      "properties": {
+        "subleq.server.command": {
+          "type": "string",
+          "default": "uv",
+          "description": "Executable used to launch the SUBLEQ language server."
+        },
+        "subleq.server.arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Arguments passed to the SUBLEQ language-server executable. Leave empty to run `uv run --project <detected-project> subleq lsp`."
+        },
+        "subleq.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace communication between VS Code and the SUBLEQ language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js",
+    "package": "vsce package --out ../../dist/subleq-language-support.vsix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2"
+  }
+}

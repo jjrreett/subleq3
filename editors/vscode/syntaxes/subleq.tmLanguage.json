@@ -1,0 +1,136 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SUBLEQ",
+  "scopeName": "source.subleq",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#macroDefinitions"
+    },
+    {
+      "include": "#labels"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#instructions"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#specialValues"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.semicolon.subleq",
+          "match": ";.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.subleq",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.subleq",
+              "match": "\\\\[\"\\\\nrt0]"
+            }
+          ]
+        }
+      ]
+    },
+    "macroDefinitions": {
+      "patterns": [
+        {
+          "match": "^(\\s*)(\\.macro)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "2": {
+              "name": "keyword.control.directive.macro.subleq"
+            },
+            "4": {
+              "name": "entity.name.function.macro.subleq"
+            }
+          }
+        }
+      ]
+    },
+    "labels": {
+      "patterns": [
+        {
+          "name": "entity.name.label.local.subleq",
+          "match": "@[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+        },
+        {
+          "name": "entity.name.label.global.subleq",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+        },
+        {
+          "name": "variable.other.label.local.subleq",
+          "match": "@[A-Za-z_][A-Za-z0-9_]*"
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.subleq",
+          "match": "\\.(?:data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res)\\b"
+        }
+      ]
+    },
+    "instructions": {
+      "patterns": [
+        {
+          "name": "keyword.control.instruction.subleq",
+          "match": "\\bsubleq\\b"
+        },
+        {
+          "name": "support.function.macro.subleq",
+          "match": "^(?:\\s*)([A-Za-z_][A-Za-z0-9_]*)(?=\\s|$)",
+          "captures": {
+            "1": {
+              "name": "support.function.macro.subleq"
+            }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.subleq",
+          "match": "-?\\$[A-Fa-f0-9]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.subleq",
+          "match": "-?%[01]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.subleq",
+          "match": "(?<![A-Za-z0-9_])-?\\d+\\b"
+        }
+      ]
+    },
+    "specialValues": {
+      "patterns": [
+        {
+          "name": "constant.language.next-address.subleq",
+          "match": "\\?"
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@ import argparse
 import contextlib
 import json
 from collections.abc import Iterable
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -168,8 +169,6 @@ class _SubleqTransformer(Transformer):
         return items
 
     def word(self, items):
-        for x in items:
-            x = np.int16(x) if x < 0 else np.uint16(x)
         return items
 
     def dword(self, items):
@@ -298,9 +297,8 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     return data, labels
 
 
-def main() -> None:
-    """Entrypoint."""
-    parser = argparse.ArgumentParser(description="Subleq compiler (gcc-style)")
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Add compiler arguments to a standalone or subcommand parser."""
     parser.add_argument("input", type=Path, help="Input source file")
     parser.add_argument("-o", "--output", type=Path, help="Output filename")
     parser.add_argument(
@@ -316,7 +314,11 @@ def main() -> None:
         action="store_true",
         help="Enable debug mode",
     )
-    args = parser.parse_args()
+    parser.set_defaults(command_handler=execute)
+
+
+def execute(args: argparse.Namespace) -> None:
+    """Compile a source file using parsed command-line arguments."""
 
     global DEBUG  # noqa: PLW0603
     DEBUG = args.debug
@@ -333,6 +335,13 @@ def main() -> None:
         output_filename.with_suffix(".labels").write_text(lbstr)
     np.save(output_filename, data)
     print(f"Compiled output saved to {output_filename!r}. {len(data)} instructions")
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the standalone compiler entry point."""
+    parser = argparse.ArgumentParser(description="SUBLEQ compiler (gcc-style)")
+    configure_parser(parser)
+    execute(parser.parse_args(argv))
 
 
 if __name__ == "__main__":

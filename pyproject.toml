@@ -1,12 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "subleq"
 version = "0.1.0"
-description = "Add your description here"
+description = "A 16-bit SUBLEQ assembler, emulator, and language server"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["lark>=1.2.2", "numpy>=2.3.1", "rich>=14.0.0"]
+dependencies = [
+    "lark>=1.2.2",
+    "numpy>=2.3.1",
+    "pygls>=2.1.1",
+    "rich>=14.0.0",
+]
 
 [project.scripts]
-compile = "subleq.compile:main"
-run = "subleq.run:main"
-gen_grammar = "subleq.gen_grammar:main"
+subleq = "subleq.cli:main"

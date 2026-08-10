@@ -27,7 +27,7 @@ local_label_def: "@" IDENT ":"
 data: ".data" (local_label_def | label_def | value | _NEWLINE)* ".endd" _NEWLINE
 macro: ".macro" args _NEWLINE stmt+ ".endm" _NEWLINE
 byte: ".byte"  NUMBER ("," NUMBER)* _NEWLINE
-word: ".word"  NUMBER ("," NUMBER)* _NEWLINE
+word: ".word"  value ("," value)* _NEWLINE
 dword: ".dword"  NUMBER ("," NUMBER)* _NEWLINE
 ascii: ".ascii" string _NEWLINE
 asciiz: ".asciiz" string _NEWLINE

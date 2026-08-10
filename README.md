@@ -145,15 +145,16 @@ Their intended meanings are:
 | Directive | Result |
 | --- | --- |
 | `.byte n, ...` | One word per numeric value. Byte-range checking is not currently enforced. |
-| `.word n, ...` | One word per numeric value. |
+| `.word value, ...` | One word per number, label address, or `?` value. |
 | `.dword n, ...` | Two words per value, high word followed by low word. |
 | `.ascii "text"` | One word per character. |
 | `.asciiz "text"` | The characters followed by a zero word. |
 | `.fill count, value` | `count` copies of `value`. |
 | `.res count` | `count` zero words. |
 
-`.byte`, `.word`, and `.dword` currently accept numeric literals only, not
-labels or macro arguments.
+`.word` accepts labels and macro arguments because machine addresses are
+16-bit words. `.byte` and `.dword` remain numeric-only until their truncation
+and relocation behavior is defined.
 
 The more general `.data` block accepts numbers, labels, local labels, and `?`,
 one item after another until `.endd`:
@@ -216,32 +217,111 @@ uv sync
 Compile an assembly file:
 
 ```powershell
-uv run python -m subleq.compile program.s
+uv run subleq compile program.s
 ```
 
 This creates `program.npy`. Add `-l` to also write `program.labels`, or use
 `-o` to select another output name:
 
 ```powershell
-uv run python -m subleq.compile program.s -o build/program.npy -l
+uv run subleq compile program.s -o build/program.npy -l
 ```
 
 Run the resulting image:
 
 ```powershell
-uv run python -m subleq.run program.npy -l
+uv run subleq run program.npy -l
 ```
 
 `-l` loads the matching labels file for more useful debug output. Add `-g` to
 either command to enable its verbose diagnostics.
 
-After installing the project, the shorter script names are also available:
+Install the complete toolchain as one editable `uv` tool while developing:
 
 ```powershell
-uv pip install .
-compile program.s -l
-run program.npy -l
+uv tool install --force -e .
+subleq compile program.s -l
+subleq run program.npy -l
 ```
+
+The other subcommands are `subleq gen-grammar` and `subleq lsp`. Run
+`subleq --help` or `subleq <command> --help` for the complete options.
+
+## Language server
+
+The project includes a Language Server Protocol (LSP) server for editor and
+IDE integration. It currently provides:
+
+- Markdown hover documentation for `subleq`, directives, macros, and labels.
+- Go to definition for macros, global labels, scoped `@local` labels, and
+  labels private to macro bodies.
+- Inlay hints showing how many native SUBLEQ instructions each macro call
+  expands into, including nested macro calls.
+- Live diagnostics for duplicate labels, unknown opcodes, incorrect argument
+  counts, unterminated macros, and macro expansions whose size cannot be
+  calculated.
+
+Run the server over standard input and output with:
+
+```powershell
+uv run subleq lsp
+```
+
+Configure an editor's LSP client to launch that command for SUBLEQ source
+files. The project currently uses `.s`, which is also commonly claimed by
+other assembly languages, so the editor-side file association should be
+limited to this project. A dedicated file extension can be introduced later.
+
+Any contiguous semicolon comments immediately above a macro or label become
+its hover documentation:
+
+```asm
+; Add source to destination without modifying source.
+; Expands to three native instructions.
+.macro add, source, destination
+    subleq source, zero, ?
+    subleq zero, destination, ?
+    subleq zero, zero, ?
+.endm
+```
+
+The LSP calculates the instruction count from the macro body, so the comment
+does not need to repeat it. A call such as `add value, total` receives a
+`: 3 instructions` inlay hint without changing the source file.
+
+The language analysis is implemented separately from the protocol transport
+in `subleq/analysis.py`. Future include/linker support can extend that shared
+model with symbols from other files.
+
+### VS Code
+
+A client extension is included in `editors/vscode`. To develop it, first
+install its Node dependencies:
+
+```powershell
+cd editors/vscode
+npm install
+```
+
+Then open the repository in VS Code, select **Run SUBLEQ Extension** in the Run
+and Debug view, and press `F5`. This opens an Extension Development Host with
+the workspace's `.s` files associated with SUBLEQ.
+
+To create and install a reusable extension package:
+
+```powershell
+cd editors/vscode
+npm run package
+code --install-extension ../../dist/subleq-language-support.vsix
+```
+
+Reload VS Code after installing it. The extension registers `.subleq`
+globally; this repository maps `.s` to SUBLEQ through its workspace settings
+so conventional assembly files elsewhere are unaffected.
+
+If the server does not start, open **View → Output**, select **SUBLEQ Language
+Server**, and check that `uv` is available on VS Code's `PATH`. The server
+command and arguments can be changed in the `subleq.server.*` settings.
 
 ## Regenerating the parser
 
@@ -249,7 +329,7 @@ run program.npy -l
 `subleq.lark`, regenerate it from the project directory:
 
 ```powershell
-uv run python -m subleq.gen_grammar
+uv run subleq gen-grammar
 ```
 
 Do not edit the generated parser by hand.

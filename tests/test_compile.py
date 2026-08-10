@@ -92,6 +92,21 @@ root:
 """
         self.assert_compiles_to(source, [3, 3, 4, 0, 0, 8, 8, 9, 0, 0])
 
+    def test_word_accepts_symbols_local_labels_next_and_macro_arguments(self) -> None:
+        source = """\
+.macro emit_pointer, target
+@slot: .word target
+.endm
+
+target: .word 0
+root:
+    emit_pointer target
+    emit_pointer @end
+@end: .word @end
+    .word ?
+"""
+        self.assert_compiles_to(source, [0, 0, 3, 3, 5])
+
     def test_undefined_local_label_has_clear_error(self) -> None:
         with self.assertRaisesRegex(
             CompilationError,

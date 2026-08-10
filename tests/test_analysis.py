@@ -1,0 +1,97 @@
+"""Tests for editor-oriented SUBLEQ source analysis."""
+
+import unittest
+
+from subleq.analysis import DocumentAnalysis
+from subleq.lsp import index_to_utf16, utf16_to_index
+
+
+SOURCE = """\
+; Add source to destination.
+.macro add, source, destination
+    subleq source, zero, ?
+    subleq zero, destination, ?
+    subleq zero, zero, ?
+.endm
+
+; Invoke another macro twice.
+.macro add_twice, source, destination
+@again:
+    add source, destination
+    add source, destination
+.endm
+
+zero: .word 0
+main:
+    add_twice zero, @result
+@result: .word 0
+"""
+
+
+class AnalysisTests(unittest.TestCase):
+    """The editor model should mirror compiler label and macro semantics."""
+
+    def setUp(self) -> None:
+        self.analysis = DocumentAnalysis.parse(SOURCE)
+
+    def test_macro_instruction_counts_are_recursive(self) -> None:
+        self.assertEqual(self.analysis.macros["add"].instruction_count, 3)
+        self.assertEqual(self.analysis.macros["add_twice"].instruction_count, 6)
+
+        hints = self.analysis.inlay_hints()
+        invocation_hint = next(hint for hint in hints if hint.line == 16)
+        self.assertEqual(invocation_hint.label, ": 6 instructions")
+
+    def test_hover_uses_preceding_comments_and_instruction_count(self) -> None:
+        hover = self.analysis.hover_at(16, 6)
+
+        self.assertIsNotNone(hover)
+        assert hover is not None
+        self.assertIn("add_twice, source, destination", hover.markdown)
+        self.assertIn("Invoke another macro twice.", hover.markdown)
+        self.assertIn("6 SUBLEQ instructions", hover.markdown)
+
+    def test_go_to_macro_and_local_label_definitions(self) -> None:
+        macro = self.analysis.definition_at(16, 6)
+        local = self.analysis.definition_at(16, 22)
+
+        self.assertIsNotNone(macro)
+        self.assertIsNotNone(local)
+        assert macro is not None and local is not None
+        self.assertEqual(macro.span.line, 8)
+        self.assertEqual(local.span.line, 17)
+
+    def test_data_values_are_not_treated_as_opcodes(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            ".data\n    destination\n    @target\n.endd\n"
+        )
+
+        self.assertEqual(analysis.invocations, [])
+        self.assertEqual(analysis.diagnostics, [])
+
+    def test_bad_invocation_reports_diagnostic(self) -> None:
+        analysis = DocumentAnalysis.parse("main:\n    missing 1\n")
+
+        self.assertEqual(len(analysis.diagnostics), 1)
+        self.assertIn("Unknown opcode or macro", analysis.diagnostics[0].message)
+
+    def test_recursive_macro_has_no_misleading_size(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            ".macro forever\n    forever\n.endm\nmain:\n    forever\n"
+        )
+
+        self.assertIsNone(analysis.macros["forever"].instruction_count)
+        self.assertEqual(analysis.inlay_hints(), [])
+        self.assertTrue(
+            any(diagnostic.severity == "warning" for diagnostic in analysis.diagnostics)
+        )
+
+    def test_utf16_position_conversion(self) -> None:
+        line = "😀 add"
+
+        self.assertEqual(index_to_utf16(line, 2), 3)
+        self.assertEqual(utf16_to_index(line, 3), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

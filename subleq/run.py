@@ -5,6 +5,7 @@ import argparse
 
 # from rich import print  # noqa: A004
 import json
+from collections.abc import Sequence
 from functools import wraps
 from pathlib import Path
 
@@ -103,9 +104,8 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
         pc += 3
 
 
-def main() -> None:
-    """Entrypoint."""
-    parser = argparse.ArgumentParser(description="Subleq")
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Add emulator arguments to a standalone or subcommand parser."""
     parser.add_argument("input", type=Path, help="Input source file")
     parser.add_argument(
         "-l",
@@ -120,7 +120,11 @@ def main() -> None:
         action="store_true",
         help="Enable debug mode",
     )
-    args = parser.parse_args()
+    parser.set_defaults(command_handler=execute)
+
+
+def execute(args: argparse.Namespace) -> None:
+    """Run an image using parsed command-line arguments."""
 
     global DEBUG  # noqa: PLW0603
     DEBUG = args.debug
@@ -137,6 +141,13 @@ def main() -> None:
     count = subleq(data, labels)
     print("\n---------------------------------")
     print(f"{args.input} halted in {count} instructions, {time.time() - t:.3f} seconds")
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the standalone emulator entry point."""
+    parser = argparse.ArgumentParser(description="SUBLEQ emulator")
+    configure_parser(parser)
+    execute(parser.parse_args(argv))
 
 
 if __name__ == "__main__":
