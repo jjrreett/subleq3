@@ -56,6 +56,8 @@ names.
 - Arguments are comma-separated.
 - Numeric literals may be decimal, hexadecimal with `$`, or binary with `%`.
   A leading minus sign is supported.
+- Prefix an instruction or macro operand with `#` to request an immediate
+  literal stored in the program's `.literals` pool.
 
 ```asm
 value: .word 42
@@ -139,6 +141,7 @@ Directives emit words at the current position:
 .asciiz "World"
 .fill  10, $00
 .res   256
+.literals
 ```
 
 Their intended meanings are:
@@ -152,6 +155,7 @@ Their intended meanings are:
 | `.asciiz "text"` | The characters followed by a zero word. |
 | `.fill count, value` | `count` copies of `value`. |
 | `.res count` | `count` zero words. |
+| `.literals` | One word for each unique immediate literal used by the program. |
 
 `.word` accepts labels and macro arguments because machine addresses are
 16-bit words. `.byte` and `.dword` remain numeric-only until their truncation
@@ -167,6 +171,39 @@ dispatch_table: .data
     0
 .endd
 ```
+
+### Hoisted immediate literals
+
+Instruction operands normally name memory cells or explicit addresses. An
+operand prefixed with `#` instead names a constant value. The compiler finds
+every such immediate, deduplicates equal 16-bit values, emits them where the
+single `.literals` directive appears, and rewrites each operand to the emitted
+word's address.
+
+```asm
+.include <core.s>
+
+start:
+    add #16, counter
+    sub #$ff, mask
+    jmp done
+
+done:
+    subleq z, z, 0
+
+counter: .word 0
+mask:    .word 0
+z:       .word 0
+p1:      .word 1
+m1:      .word -1
+
+.literals
+```
+
+Repeated spellings of the same 16-bit value share one word, so `#-1` and
+`#$ffff` refer to the same pool entry. A program using `#` operands must contain
+exactly one `.literals` directive. Place the directive where literal data cannot
+be executed—for example after the program's code and ordinary data.
 
 The existing code also uses one-line blocks:
 

@@ -47,14 +47,26 @@ class _Label:
 class _Next: ...
 
 
+@dataclass(frozen=True)
+class _Literal:
+    value: int
+
+
+@dataclass(frozen=True)
+class _LiteralPool: ...
+
+
+_InstructionToken = str | int | _Next | _Label | _Literal | _LiteralPool
+
+
 @dataclass
 class _Macro:
     ident: str
     args: list[str]
-    instructions: list[str | _Next | _Label]
+    instructions: list[_InstructionToken]
     call_counter = 0
 
-    def expand(self, actual_args: Iterable[str]) -> list[str | _Next | _Label]:
+    def expand(self, actual_args: Iterable[_InstructionToken]) -> list[_InstructionToken]:
         actual_args = list(actual_args)
         if len(actual_args) != len(self.args):
             msg = f"Macro '{self.ident}' expects {len(self.args)} arguments, got {len(actual_args)}"
@@ -94,7 +106,9 @@ class _Macro:
             for instr in instructions
         ]
         for instr in instructions:
-            if not isinstance(instr, (str, _Next, int, _Label)):
+            if not isinstance(
+                instr, (str, _Next, int, _Label, _Literal, _LiteralPool)
+            ):
                 msg = f"Unsupported instruction token: {instr!r}"
                 raise TypeError(msg)
 
@@ -107,10 +121,10 @@ class _SubleqTransformer(Transformer):
         self.labels = set()
         self.macros = {}
 
-    def start(self, items) -> list[str | _Next | _Label]:  # noqa: ANN001
+    def start(self, items) -> list[_InstructionToken]:  # noqa: ANN001
         return self.instructions(items)
 
-    def instructions(self, items) -> list[str | _Next | _Label]:  # noqa: ANN001
+    def instructions(self, items) -> list[_InstructionToken]:  # noqa: ANN001
         instructions = []
         for item in items:
             if isinstance(item, str) or not isinstance(item, Iterable):
@@ -119,7 +133,7 @@ class _SubleqTransformer(Transformer):
             instructions.extend(item)
         return instructions
 
-    def instruction(self, items) -> list[str | _Next | _Label]:
+    def instruction(self, items) -> list[_InstructionToken]:
         if not items or items[0] is None:
             return None
 
@@ -138,7 +152,7 @@ class _SubleqTransformer(Transformer):
             return args
         raise CompilationError(f"Opcode {name!r} not recognized.")
 
-    def args(self, items) -> list[str | _Next | int]:
+    def args(self, items) -> list[_InstructionToken]:
         return list(items)
 
     def macro_args(self, items) -> Iterable[str]:  # noqa: ANN001
@@ -215,6 +229,13 @@ class _SubleqTransformer(Transformer):
         (count,) = items
         return self.fill((count, 0))
 
+    def literal(self, items) -> _Literal:
+        (value,) = items
+        return _Literal(value % (1 << 16))
+
+    def literal_pool(self, items) -> _LiteralPool:  # noqa: ARG002
+        return _LiteralPool()
+
     def string(self, items):
         return [ord(_STRING_ESCAPES.get(str(char), str(char))) for char in items]
 
@@ -245,15 +266,36 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
         raise
     debug(instructions)
 
+    literal_values = list(
+        dict.fromkeys(
+            inst.value for inst in instructions if isinstance(inst, _Literal)
+        )
+    )
+    literal_pool_count = sum(isinstance(inst, _LiteralPool) for inst in instructions)
+    if literal_pool_count > 1:
+        raise CompilationError("The .literals directive may appear only once")
+    if literal_values and literal_pool_count == 0:
+        raise CompilationError(
+            "Immediate literals require a .literals directive to reserve their storage"
+        )
+
     # Labels do not occupy memory, so the first pass records their addresses
     # while preserving the scope in which every emitted value appeared.
     labels: dict[str, int] = {}
     local_labels: dict[tuple[str, str], int] = {}
-    scoped_values: list[tuple[str | int, str]] = []
+    scoped_values: list[tuple[str | int | _Literal, str]] = []
+    literal_addresses: dict[int, int] = {}
     scope = "<start of file>"
     address = 0
 
     for inst in instructions:
+        if isinstance(inst, _LiteralPool):
+            for literal_value in literal_values:
+                literal_addresses[literal_value] = address
+                scoped_values.append((literal_value, scope))
+                address += 1
+            continue
+
         if isinstance(inst, _Label):
             if inst.name.startswith("@"):
                 key = (scope, inst.name)
@@ -284,7 +326,9 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     # Resolve references in the scope captured at their source position.
     machine_code: list[int] = []
     for value, value_scope in scoped_values:
-        if isinstance(value, str):
+        if isinstance(value, _Literal):
+            value = literal_addresses[value.value]
+        elif isinstance(value, str):
             if value.startswith("@"):
                 key = (value_scope, value)
                 if key not in local_labels:

@@ -116,6 +116,46 @@ root:
             [ord("A"), 10, 9, ord('"'), ord("\\"), ord("B"), 13, 0, 0],
         )
 
+    def test_literal_pool_hoists_and_deduplicates_immediate_values(self) -> None:
+        source = """\
+.macro subtract, source, destination
+    subleq source, destination, ?
+.endm
+
+start:
+    subtract #7, target
+    subtract #$0007, target
+    subleq zero, zero, done
+done:
+    subleq zero, zero, 0
+.literals
+target: .word 0
+zero: .word 0
+"""
+
+        self.assert_compiles_to(
+            source,
+            [12, 13, 3, 12, 13, 6, 14, 14, 9, 14, 14, 0, 7, 0, 0],
+        )
+
+    def test_immediate_literal_requires_a_pool(self) -> None:
+        with self.assertRaisesRegex(
+            CompilationError, "Immediate literals require a .literals directive"
+        ):
+            subleq_compile("subleq #1, 0, 0\n")
+
+    def test_literal_pool_deduplicates_equivalent_16_bit_values(self) -> None:
+        self.assert_compiles_to(
+            "subleq #-1, #$ffff, 0\n.literals\n",
+            [3, 3, 0, 0xFFFF],
+        )
+
+    def test_literal_pool_may_appear_only_once(self) -> None:
+        with self.assertRaisesRegex(
+            CompilationError, "The .literals directive may appear only once"
+        ):
+            subleq_compile(".literals\n.literals\n")
+
     def test_undefined_local_label_has_clear_error(self) -> None:
         with self.assertRaisesRegex(
             CompilationError,

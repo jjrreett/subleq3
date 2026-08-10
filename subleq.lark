@@ -23,6 +23,7 @@ local_label_def: "@" IDENT ":"
                 | asciiz
                 | fill
                 | reserve
+                | literal_pool
 
 data: ".data" (local_label_def | label_def | value | _NEWLINE)* ".endd" _NEWLINE
 macro: ".macro" args _NEWLINE stmt+ ".endm" _NEWLINE
@@ -33,12 +34,14 @@ ascii: ".ascii" string _NEWLINE
 asciiz: ".asciiz" string _NEWLINE
 fill: ".fill" NUMBER "," NUMBER _NEWLINE
 reserve: ".res" NUMBER _NEWLINE
+literal_pool: ".literals" _NEWLINE
 
 
 instruction: IDENT args? _NEWLINE
 args: value ("," value)*
 
-?value: LOCAL_LABEL? IDENT | NUMBER | QMARK
+?value: LOCAL_LABEL? IDENT | NUMBER | literal | QMARK
+literal: "#" NUMBER
 NUMBER: "-"? (DEC_INT | HEX_INT | BIN_INT)
 LOCAL_LABEL: "@"
 DEC_INT: DIGIT+
