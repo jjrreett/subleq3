@@ -152,7 +152,16 @@ def execute_data(
 
     t = time.time()
     print("---------------------------------", flush=True)
-    count = subleq(data, labels)
+    try:
+        count = subleq(data, labels)
+    except KeyboardInterrupt:
+        print("\n---------------------------------")
+        print(f"{display_name} interrupted by user")
+        return
+    except EOFError:
+        print("\n---------------------------------")
+        print(f"{display_name} stopped because input was closed")
+        return
     print("\n---------------------------------")
     print(
         f"{display_name} halted in {count} instructions, "

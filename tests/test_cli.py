@@ -9,7 +9,8 @@ from unittest import mock
 
 import numpy as np
 
-from subleq import cli
+from subleq import cli, run
+from subleq.compile import subleq_compile_files
 
 
 class CommandLineTests(unittest.TestCase):
@@ -66,6 +67,46 @@ value: .word 0
                 cli.main(["run", str(source_path)])
 
             self.assertFalse(source_path.with_suffix(".npy").exists())
+
+    def test_emulator_stops_cleanly_when_input_is_interrupted(self) -> None:
+        for error, message in (
+            (KeyboardInterrupt(), "interrupted by user"),
+            (EOFError(), "input was closed"),
+        ):
+            with (
+                self.subTest(error=type(error).__name__),
+                mock.patch.object(run, "subleq", side_effect=error),
+                contextlib.redirect_stdout(io.StringIO()) as output,
+            ):
+                run.execute_data(
+                    np.zeros(3, dtype=np.uint16),
+                    {},
+                    debug_enabled=False,
+                    display_name="test.s",
+                )
+
+            self.assertIn(message, output.getvalue())
+
+    def test_echo_program_prompts_before_reading_input(self) -> None:
+        root = Path(__file__).parents[1]
+        data, labels = subleq_compile_files(
+            [root / "programs" / "program" / "program.s"]
+        )
+
+        with (
+            mock.patch("builtins.input", side_effect=EOFError()),
+            mock.patch.object(run.os, "write") as write_output,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            run.execute_data(
+                data,
+                labels,
+                debug_enabled=False,
+                display_name="program.s",
+            )
+
+        emitted = b"".join(call.args[1] for call in write_output.call_args_list)
+        self.assertEqual(emitted, b"Welcome to the Subleq CPU Emulator!\n> ")
 
     def test_compile_links_multiple_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -307,6 +307,7 @@ boot:
     jmp test
 
 test:    
+    print_asciiz input_prompt
     clr input
     sub IO, input
     psh input
@@ -333,6 +334,7 @@ ascii_cr:    .word 13
 ascii_0:     .word 48
 ascii_1:     .word 49
 boot_prompt: .asciiz "Welcome to the Subleq CPU Emulator!\n"
+input_prompt: .asciiz "> "
 
 .byte $ff
 .word $1234
