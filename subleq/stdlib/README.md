@@ -105,3 +105,36 @@ main:
 `rts` is deliberately unusual because SUBLEQ has no native indirect jump. It
 uses macro-private self-modifying code, making each expanded call site
 independent but not recursively reentrant.
+
+## `memory.s`
+
+Non-destructive indirect memory access. It imports `core.s` and uses the core
+`z` scratch cell.
+
+| Macro | Effect | Clobbers |
+| --- | --- | --- |
+| `read_word pointer, destination` | Copy `memory[memory[pointer]]` without changing the source | `destination`, private code, `z` restored |
+
+Unlike the stack-oriented `rpt`, `read_word` leaves the addressed source word
+intact, making it suitable for traversing strings and tables.
+
+## `io.s`
+
+Character-output helpers. It imports `memory.s`, requires the fixed `IO` cell,
+and expects the program to place one `.literals` directive for newline values.
+
+| Macro | Effect | Clobbers |
+| --- | --- | --- |
+| `newline` | Write line feed and carriage return to `IO` | device output only |
+| `print_asciiz string` | Write characters through the terminating zero | `IO`, private pointer/character cells, `z` restored |
+
+## `math.s`
+
+Extended integer arithmetic. It imports `core.s`; shift macros that use
+immediates require the program's `.literals` pool.
+
+| Macro | Effect | Clobbers |
+| --- | --- | --- |
+| `mul source, destination` | Multiply by repeated addition | both operands, private scratch, `z` restored |
+| `lsl count, value` | Shift `value` left by `count` bits | `value`, private counter, `z` restored |
+| `lsr source, value` | Shift `value` right with a working bit accumulator | both operands, private scratch, `z` restored |

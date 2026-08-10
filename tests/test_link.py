@@ -177,7 +177,15 @@ stack_ptr: .word stack
     def test_standard_modules_are_imported_once(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             main = Path(directory) / "main.s"
-            main.write_text(".include <core.s>\n.include <subroutine.s>\n.word 0\n")
+            main.write_text(
+                ".include <core.s>\n"
+                ".include <subroutine.s>\n"
+                ".include <memory.s>\n"
+                ".include <io.s>\n"
+                ".include <math.s>\n"
+                ".literals\n"
+                ".word 0\n"
+            )
 
             data, _ = subleq_compile_files([main])
 

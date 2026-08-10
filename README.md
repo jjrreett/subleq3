@@ -308,6 +308,11 @@ total: .word 0
 `stack_ptr` cell. Standard modules are linked once, so importing both directly
 and transitively does not create duplicate macro definitions.
 
+Additional modules provide non-destructive indirect reads (`memory.s`),
+character and ASCIIZ output (`io.s`), and extended multiply/shift operations
+(`math.s`). The main sample imports these modules instead of defining reusable
+macros locally.
+
 The complete API reference—including signatures, required cells, effects,
 instruction counts, clobbers, and the subroutine calling convention—is in
 [`subleq/stdlib/README.md`](subleq/stdlib/README.md). The same structured
