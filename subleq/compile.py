@@ -4,7 +4,9 @@
 import argparse
 import contextlib
 import json
-from collections.abc import Iterable, Sequence
+import sys
+from collections import Counter
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -12,6 +14,7 @@ from pathlib import Path
 import numpy as np
 from rich import print  # noqa: A004
 
+from .analysis import DocumentAnalysis
 from .link import link_sources
 from .subleq import Lark_StandAlone, Transformer, VisitError
 
@@ -29,6 +32,36 @@ _STRING_ESCAPES = {
 
 class CompilationError(Exception):
     """Failure to Compile."""
+
+
+@dataclass(frozen=True)
+class MacroTradeoff:
+    """Estimated code-size and runtime tradeoff for sharing a macro body."""
+
+    macro: str
+    body_instructions: int
+    uses: int
+    inline_instructions: int
+    subroutine_instructions: int
+    saved_instructions: int
+    extra_cycles_per_call: int
+
+    def message(self) -> str:
+        return (
+            f"macro {self.macro!r} expands to {self.body_instructions} SUBLEQ "
+            f"instructions and is used {self.uses} times "
+            f"({self.inline_instructions} inlined instructions). A shared "
+            f"subroutine is estimated at {self.subroutine_instructions} "
+            f"instructions, saving about {self.saved_instructions} instructions "
+            f"({self.saved_instructions * 3} words), but adding roughly "
+            f"{self.extra_cycles_per_call} instructions of call and argument "
+            "overhead per invocation. This is a heuristic; indirect parameters, "
+            "embedded data, and branch paths can change the tradeoff."
+        )
+
+
+_SUBROUTINE_ABI_MACROS = ("psh", "pop", "jsr", "rts")
+_MIN_SHARED_MACRO_INSTRUCTIONS = 20
 
 
 @wraps(print)
@@ -264,7 +297,111 @@ class _SubleqTransformer(Transformer):
         return _Label(name="@" + name)
 
 
-def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
+def _effective_macro_uses(analysis: DocumentAnalysis) -> Counter[str]:
+    """Count emitted macro expansions, including calls nested in macros."""
+    uses: Counter[str] = Counter()
+
+    def add_expansion(name: str, quantity: int, stack: tuple[str, ...]) -> None:
+        if name not in analysis.macros or name in stack:
+            return
+        uses[name] += quantity
+        macro = analysis.macros[name]
+        if macro.instruction_count is None:
+            return
+        nested = Counter(
+            invocation.name
+            for invocation in analysis.invocations
+            if invocation.macro_owner == name
+            and invocation.name in analysis.macros
+        )
+        for nested_name, nested_quantity in nested.items():
+            add_expansion(
+                nested_name,
+                quantity * nested_quantity,
+                (*stack, name),
+            )
+
+    top_level = Counter(
+        invocation.name
+        for invocation in analysis.invocations
+        if invocation.macro_owner is None and invocation.name in analysis.macros
+    )
+    for name, quantity in top_level.items():
+        add_expansion(name, quantity, ())
+    return uses
+
+
+def macro_tradeoffs(source: str) -> list[MacroTradeoff]:
+    """Find macros likely to save code space when converted to subroutines."""
+    analysis = DocumentAnalysis.parse(source)
+    if not all(name in analysis.macros for name in _SUBROUTINE_ABI_MACROS):
+        return []
+
+    costs = {
+        name: analysis.macros[name].instruction_count
+        for name in _SUBROUTINE_ABI_MACROS
+    }
+    if any(cost is None for cost in costs.values()):
+        return []
+
+    psh_cost = int(costs["psh"])
+    pop_cost = int(costs["pop"])
+    jsr_cost = int(costs["jsr"])
+    rts_cost = int(costs["rts"])
+    uses = _effective_macro_uses(analysis)
+    tradeoffs: list[MacroTradeoff] = []
+
+    for name, quantity in uses.items():
+        macro = analysis.macros[name]
+        body_cost = macro.instruction_count
+        if (
+            name in _SUBROUTINE_ABI_MACROS
+            or body_cost is None
+            or body_cost < _MIN_SHARED_MACRO_INSTRUCTIONS
+            or quantity < 2
+        ):
+            continue
+
+        parameter_count = len(macro.parameters)
+        inline_cost = body_cost * quantity
+        shared_body_cost = body_cost + rts_cost + parameter_count * pop_cost + 1
+        call_site_cost = jsr_cost + parameter_count * psh_cost
+        shared_cost = shared_body_cost + quantity * call_site_cost
+        savings = inline_cost - shared_cost
+        if savings <= 0:
+            continue
+
+        runtime_overhead = (
+            jsr_cost
+            + parameter_count * (psh_cost + pop_cost)
+            + rts_cost
+            + 1
+        )
+        tradeoffs.append(
+            MacroTradeoff(
+                macro=name,
+                body_instructions=body_cost,
+                uses=quantity,
+                inline_instructions=inline_cost,
+                subroutine_instructions=shared_cost,
+                saved_instructions=savings,
+                extra_cycles_per_call=runtime_overhead,
+            )
+        )
+
+    return sorted(tradeoffs, key=lambda item: item.saved_instructions, reverse=True)
+
+
+def print_compile_warning(message: str) -> None:
+    """Print a compiler advisory with a consistent warning style."""
+    print(f"[yellow]warning:[/yellow] {message}", file=sys.stderr)
+
+
+def subleq_compile(
+    source: str,
+    *,
+    warning_handler: Callable[[str], None] | None = None,
+) -> tuple[np.ndarray, dict[str, int]]:
     """Compile subleq assembly into image in the format of np.ndarray."""
     parser = Lark_StandAlone(propagate_positions=True)
     tree = parser.parse(source)
@@ -366,12 +503,23 @@ def subleq_compile(source: str) -> tuple[np.ndarray, dict[str, int]]:
     for i, x in enumerate(machine_code):
         data[i] = np.uint16(x % (1 << 16))
 
+    if warning_handler is not None:
+        for tradeoff in macro_tradeoffs(source):
+            warning_handler(tradeoff.message())
+
     return data, labels
 
 
-def subleq_compile_files(inputs: Sequence[Path]) -> tuple[np.ndarray, dict[str, int]]:
+def subleq_compile_files(
+    inputs: Sequence[Path],
+    *,
+    warning_handler: Callable[[str], None] | None = None,
+) -> tuple[np.ndarray, dict[str, int]]:
     """Link and compile one or more source files in the given order."""
-    return subleq_compile(link_sources(list(inputs)))
+    return subleq_compile(
+        link_sources(list(inputs)),
+        warning_handler=warning_handler,
+    )
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -407,7 +555,10 @@ def execute(args: argparse.Namespace) -> None:
 
     debug(f"Input files: {args.input!r}")
 
-    data, labels = subleq_compile_files(args.input)
+    data, labels = subleq_compile_files(
+        args.input,
+        warning_handler=print_compile_warning,
+    )
 
     output_filename = args.output or args.input[0]
     output_filename = output_filename.with_suffix(".npy")

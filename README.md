@@ -239,6 +239,14 @@ Arguments are substituted as assembler tokens. A macro must be defined before
 it is used, and each invocation must supply exactly the declared number of
 arguments. Macro bodies may invoke previously defined macros.
 
+When compiling through the CLI, the compiler estimates whether a large,
+frequently expanded macro could occupy less space as a shared subroutine. A
+yellow warning reports the current inline instruction count, estimated shared
+size and word savings, and estimated call/argument overhead per invocation.
+The estimate uses the packaged `psh`/`pop`/`jsr`/`rts` calling convention and is
+deliberately advisory: indirect parameters, embedded data, and conditional
+paths can change both size and runtime cost.
+
 The larger sample program builds operations such as `clr`, `add`, `cpy`,
 `inc`, `dec`, conditional branches, shifts, multiplication, stack operations,
 subroutine calls, and decimal printing from `subleq` plus self-modifying code.
@@ -414,6 +422,10 @@ in `subleq/analysis.py`. Future include/linker support can extend that shared
 model with symbols from other files.
 
 ### VS Code
+
+The extension supplies SUBLEQ-specific coloring for comments, strings,
+directives, native instructions, macro definitions and calls, global and local
+labels, numeric values, and hoisted `#` literals.
 
 A client extension is included in `editors/vscode`. To develop it, first
 install its Node dependencies:

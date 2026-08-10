@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from . import const
-from .compile import subleq_compile_files
+from .compile import print_compile_warning, subleq_compile_files
 
 DEBUG = True
 
@@ -171,7 +171,10 @@ def execute_data(
 
 def execute_sources(args: argparse.Namespace) -> None:
     """Compile linked assembly sources in memory and run them."""
-    data, labels = subleq_compile_files(args.input)
+    data, labels = subleq_compile_files(
+        args.input,
+        warning_handler=print_compile_warning,
+    )
     execute_data(
         data,
         labels,

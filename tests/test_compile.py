@@ -6,7 +6,7 @@ from unittest import mock
 import numpy as np
 
 from subleq import run
-from subleq.compile import CompilationError, subleq_compile
+from subleq.compile import CompilationError, macro_tradeoffs, subleq_compile
 
 
 class LocalLabelTests(unittest.TestCase):
@@ -213,6 +213,43 @@ class RuntimeInputTests(unittest.TestCase):
 
         read_input.assert_called_once_with()
         self.assertEqual(instruction_count, 1)
+
+
+class MacroTradeoffTests(unittest.TestCase):
+    def test_repeated_large_macro_reports_space_and_cycle_tradeoff(self) -> None:
+        body = "".join("    subleq z, z, ?\n" for _ in range(20))
+        source = f"""\
+.macro psh, value
+    subleq z, z, ?
+.endm
+.macro pop, value
+    subleq z, z, ?
+.endm
+.macro jsr, target
+    subleq z, z, ?
+.endm
+.macro rts
+    subleq z, z, ?
+.endm
+.macro large
+{body}.endm
+
+start:
+    large
+    large
+z: .word 0
+"""
+
+        warnings: list[str] = []
+        subleq_compile(source, warning_handler=warnings.append)
+        tradeoffs = macro_tradeoffs(source)
+
+        self.assertEqual(len(tradeoffs), 1)
+        self.assertEqual(tradeoffs[0].macro, "large")
+        self.assertEqual(tradeoffs[0].saved_instructions, 16)
+        self.assertEqual(tradeoffs[0].extra_cycles_per_call, 3)
+        self.assertIn("saving about 16 instructions (48 words)", warnings[0])
+        self.assertIn("3 instructions", warnings[0])
 
 
 if __name__ == "__main__":
