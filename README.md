@@ -455,7 +455,7 @@ Scoped local labels are implemented and covered by automated compiler tests,
 including forward and backward references, repeated macro calls, caller-local
 arguments, and nested macros.
 
-- `programs/program/program.s` compiles to a 2,042-word image.
+- `programs/program/program.s` compiles to a 2,038-word image.
 - `programs/test_local_labels/test_local_labels.s` is a preserved, intermediate
   experiment; the focused regression tests in `tests/test_compile.py` are the
   authoritative local-label suite.

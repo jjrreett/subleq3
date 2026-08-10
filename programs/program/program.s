@@ -33,7 +33,7 @@
 
 ;;;;;;;; b = b >> a ;;;;;;;;
 .macro lsr, a, b
-        add literal_16, count
+        add #16, count
         sub b, count
         inc count
         subleq p1, count, end           ; if count is <= 1: end
@@ -75,7 +75,7 @@
     while:
         bleq b, return           ; if b <= 0: return
         cpy b, tmp
-        lsl literal_15, tmp
+        lsl #15, tmp
         bpl tmp, shift          ; if b & 1:
         add a, result           ;     result += a
         sub result, IO            
@@ -113,7 +113,7 @@
         
         bpl tmp, no_overflow
         inc output
-        sub literal_16, input
+        sub #16, input
     no_overflow:
 .endm
 
@@ -132,7 +132,7 @@
 
         bpl tmp, return
         inc no_overflow
-        sub literal_256, input
+        sub #256, input
     no_overflow:
 .endm
 
@@ -192,8 +192,8 @@
 
 .macro double_dabble_add_3, x
     cpy x, tmp
-    subleq literal_4, tmp, return      ; if x ≤ 4, skip
-    add literal_3, x                  ; else x += 3
+    subleq #4, tmp, return      ; if x ≤ 4, skip
+    add #3, x                  ; else x += 3
     jmp return
     .data tmp: 0 .endd
 return:
@@ -214,7 +214,7 @@ SR:         .fill 146, $00  ; stack register
 func_print_bin:
     rts
     pop func_print_bin_a
-    cpy literal_16, func_print_bin_counter
+    cpy #16, func_print_bin_counter
 func_print_bin_check_msb:
     bmi func_print_bin_a, func_print_bin_print_1
 
@@ -252,7 +252,7 @@ func_print_dec:
     clr hund
     clr thou
     clr tthou
-    cpy literal_16, counter
+    cpy #16, counter
 
 func_print_dec_shift:
     double_dabble_add_3 thou
@@ -327,13 +327,7 @@ z:          .word 0
 p1:         .word 1
 m1:         .word -1
 tmp:         .word 0
-literal_2:   .word 2
-literal_3:   .word 3
-literal_4:   .word 4
-literal_5:   .word 5
-literal_16:  .word 16
-literal_15:  .word 15
-literal_256: .word 256
+.literals
 ascii_lf:    .word 10
 ascii_cr:    .word 13
 ascii_0:     .word 48
