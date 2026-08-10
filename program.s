@@ -1,99 +1,4 @@
-
-
-.macro jmp, a
-    subleq z, z, a
-.endm
-
-.macro clr, a
-    subleq a, a, ?
-.endm
-
-.macro sub, a, b
-    subleq a, b, ?
-.endm
-
-;;;;;;;; b = b + a ;;;;;;;;
-.macro add, a, b
-    sub a, z
-    sub z, b
-    clr z
-.endm
-
-
-;;;;;;;; b = a ;;;;;;;;
-.macro cpy, a, b
-    clr b
-    add a, b
-.endm
-
-
-;;;;;;;; a = a - 1 ;;;;;;;;
-.macro dec, a
-    sub p1, a
-.endm
-
-;;;;;;;; a = a + 1 ;;;;;;;;
-.macro inc, a
-    sub m1, a
-.endm
-
-;; Branches
-;
-; Branch instructions change control flow based on flag conditions.
-; 
-; Op Code | Instruction                 | Affected Flags
-; --------|-----------------------------|----------------
-; BCC     | Branch if Carry Clear       | -
-; BCS     | Branch if Carry Set         | -
-; BEQ     | Branch if Zero Set          | -
-; BMI     | Branch if Negative Set      | -
-; BNE     | Branch if Zero Clear        | -
-; BPL     | Branch if Negative Clear    | -
-; BVC     | Branch if Overflow Clear    | -
-; BVS     | Branch if Overflow Set      | -
-
-;;;;;;;; if a <= 0: jmp b ;;;;;;;;
-.macro bleq, a, b
-    subleq z, a, b
-.endm
-
-;;;;;;;; if a > 0: jmp b ;;;;;;;;
-.macro bgt, a, b
-                            ; not(a <= 0) -> jump
-    bleq a, return        ; a <= 0, don't take the jump to b
-    jmp b
-return:
-.endm
-
-;;;;;;;; if a == 0: jmp b ;;;;;;;;
-.macro beq, a, b
-                            ; not(a > 0) and (a+1 > 0) -> jump
-    bgt a, return          ; a > 0, do not jump
-    inc a
-    bgt a, decjump         ; a+1 > 0, jump
-    dec a                  ; fall through to de-increment a
-    jmp return
-decjump:
-    dec a
-    jmp b
-return:
-.endm
-
-;;;;;;;; if a >= 0: jmp b ;;;;;;;;
-.macro bpl, a, b
-                            ; (a > 0) or (a == 0) -> jump
-    bgt a, b              ; a > 0, jump
-    beq a, b              ; a == 0, jump
-.endm
-
-;;;;;;;; if a <  0: jmp b ;;;;;;;;
-.macro bmi, a, b
-                            ; not(a == 0) and (a <= 0) -> jump
-    beq a, return         ; a == 0: therefor not a < 0, return
-    bleq a, b             ; a <= 0, but not 0 -> a < 0, take the jump
-    return:
-.endm
-
+.include <subroutine.s>
 
 
 ;;;;;;;; b = b * a ;;;;;;;;
@@ -110,12 +15,6 @@ return:
 
     .data tmp: 0 .endd
     return:
-.endm
-
-;;;;;;;; a = a + a ;;;;;;;;
-.macro dbl, a
-
-    add a, a
 .endm
 
 ;;;;;;;; b = b << a ;;;;;;;;
@@ -194,81 +93,6 @@ return:
 
 
 
-
-; dest is the place where we want the value
-; ptr is the addrs of the -value (as long as we negate the number going in, we can negate it going out)
-; executes the date block, falls through
-;;;;;;;; dest = *ptr ;;;;;;;;
-.macro rpt, ptr, dest
-    clr code_a
-    clr code_a0
-    clr code_a1
-    sub ptr, z
-    sub z, code_a
-    sub z, code_a0
-    sub z, code_a1
-    clr z
-    cpy ptr, code_a
-    subleq dest, dest, code_a     ; clear dest and jump code_a
-
-    .data
-        ; Two self modifying instructions
-        code_a: 0                ; dest -= *code_a
-                dest
-                ?
-       code_a0: 0                ; clr *code_a
-       code_a1: 0
-                ?
-    .endd
-.endm
-
-;;;;;;;; *ptr = src ;;;;;;;;
-.macro wpt, src, ptr
-    cpy ptr, code_b
-    jmp code_a
-
-    .data
-        code_a:  src              ; This will become: subleq val, dest, ...
-        code_b:  0
-        code_c:  ?                ; next instruction
-    .endd
-.endm
-
-.macro psh, a
-    wpt a, stack_ptr
-    inc stack_ptr
-.endm
-
-.macro pop, a
-    dec stack_ptr
-    rpt stack_ptr, a
-.endm
-
-.macro jsr, func_addr
-    wpt return_addr, stack_ptr
-    inc stack_ptr
-    jmp func_addr
-    .data return_addr: ? .endd
-.endm
-
-; This isn't exactly how return from subroutine typically works
-; the first pass pops the return addr off the stack
-; the second pass actually returns
-.macro rts
-        bleq second_pass, setup       ; if second_pass <= 0 then jmp to setup 
-        clr second_pass               ;     else clean up second_pass and ...
-        .data
-            0                         ; self modifying jmp to return_addr
-            0
-            return_addr: 0
-
-            second_pass: 0            ; flag to branch on rerun
-        .endd
-    setup:
-        inc second_pass
-        pop return_addr             ; pop the return addr from the stack and put into self modifying jmp
-.endm
-
 ;;;;;;;; 4 bit shift, inc output if overflow ;;;;;;;;
 .macro nibble_lslo, input, output                
         dbl input
@@ -339,14 +163,13 @@ return:
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 jmp test
-
-; ALIGNMENT
-.data 
-    0     ; IO
-    0     ; INSPECT
-.endd                    
-
-
+IO:         .word $00       ; expected to be at addr 1
+INSPECT:    .word $00       ; expected to be at addr 2
+AC:         .word $00       ; accumulator
+XR:         .word $00       ; x register
+YR:         .word $00       ; y register
+SP:         .word $00       ; stack pointer
+SR:         .fill 146, $00  ; stack register
 
 func_print_bin:
     rts
@@ -440,7 +263,6 @@ func_print_dec_cleanup:
     tthou: 0
 .endd
 
-    
 test:    
     clr input
     sub IO, input
