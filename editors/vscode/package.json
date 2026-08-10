@@ -2,7 +2,7 @@
   "name": "subleq-language-support",
   "displayName": "SUBLEQ Language Support",
   "description": "Language support backed by the SUBLEQ language server.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {

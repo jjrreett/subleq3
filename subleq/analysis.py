@@ -29,6 +29,10 @@ DIRECTIVE_DOCS = {
     ".asciiz": "Emit one word per character followed by a zero word.",
     ".fill": "Emit `count` copies of a numeric value.",
     ".res": "Reserve a number of zero-filled words.",
+    ".literals": (
+        "Emit one word for every unique `#number` immediate used by the program. "
+        "Immediate operands are rewritten to the corresponding word addresses."
+    ),
 }
 
 SUBLEQ_DOC = "Subtract `memory[a]` from `memory[b]`, then branch to `target` when the signed result is less than or equal to zero."

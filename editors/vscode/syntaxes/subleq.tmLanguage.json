@@ -87,7 +87,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.subleq",
-          "match": "\\.(?:include|data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res)\\b"
+          "match": "\\.(?:include|data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res|literals)\\b"
         }
       ]
     },
@@ -112,15 +112,15 @@
       "patterns": [
         {
           "name": "constant.numeric.hex.subleq",
-          "match": "-?\\$[A-Fa-f0-9]+\\b"
+          "match": "#?-?\\$[A-Fa-f0-9]+\\b"
         },
         {
           "name": "constant.numeric.binary.subleq",
-          "match": "-?%[01]+\\b"
+          "match": "#?-?%[01]+\\b"
         },
         {
           "name": "constant.numeric.decimal.subleq",
-          "match": "(?<![A-Za-z0-9_])-?\\d+\\b"
+          "match": "(?<![A-Za-z0-9_])#?-?\\d+\\b"
         }
       ]
     },

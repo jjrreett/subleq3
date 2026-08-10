@@ -69,6 +69,15 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.invocations, [])
         self.assertEqual(analysis.diagnostics, [])
 
+    def test_literal_pool_directive_has_hover_documentation(self) -> None:
+        analysis = DocumentAnalysis.parse(".literals\n")
+
+        hover = analysis.hover_at(0, 2)
+
+        self.assertIsNotNone(hover)
+        assert hover is not None
+        self.assertIn("#number", hover.markdown)
+
     def test_bad_invocation_reports_diagnostic(self) -> None:
         analysis = DocumentAnalysis.parse("main:\n    missing 1\n")
 
