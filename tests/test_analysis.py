@@ -1,10 +1,10 @@
 """Tests for editor-oriented SUBLEQ source analysis."""
 
 import unittest
+from pathlib import Path
 
 from subleq.analysis import DocumentAnalysis
-from subleq.lsp import index_to_utf16, utf16_to_index
-
+from subleq.lsp import included_symbols, index_to_utf16, utf16_to_index
 
 SOURCE = """\
 ; Add source to destination.
@@ -91,6 +91,46 @@ class AnalysisTests(unittest.TestCase):
 
         self.assertEqual(index_to_utf16(line, 2), 3)
         self.assertEqual(utf16_to_index(line, 3), 2)
+
+    def test_standard_library_include_supplies_editor_metadata(self) -> None:
+        source = ".include <core.s>\nmain:\n    add input, total\n"
+        macros, labels = included_symbols(source, Path.cwd(), set())
+
+        analysis = DocumentAnalysis.parse(
+            source,
+            uri=(Path.cwd() / "main.s").as_uri(),
+            external_macros=macros,
+            external_global_labels=labels,
+        )
+
+        self.assertEqual(analysis.diagnostics, [])
+        self.assertEqual(analysis.inlay_hints()[0].label, ": 3 instructions")
+        definition = analysis.definition_at(2, 6)
+        self.assertIsNotNone(definition)
+        assert definition is not None
+        self.assertEqual(definition.name, "add")
+        self.assertTrue(definition.uri and definition.uri.endswith("/core.s"))
+
+        expected_counts = {
+            "jmp": 1,
+            "clr": 1,
+            "sub": 1,
+            "add": 3,
+            "cpy": 4,
+            "dec": 1,
+            "inc": 1,
+            "dbl": 3,
+            "bleq": 1,
+            "bgt": 2,
+            "beq": 9,
+            "bne": 10,
+            "bpl": 11,
+            "bmi": 10,
+        }
+        self.assertEqual(
+            {name: macros[name].instruction_count for name in expected_counts},
+            expected_counts,
+        )
 
 
 if __name__ == "__main__":

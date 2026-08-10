@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
+from importlib import resources
+from pathlib import Path
 
 from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
-from .analysis import DocumentAnalysis, Span
-
+from .analysis import DocumentAnalysis, Span, Symbol
+from .link import INCLUDE_RE
 
 SERVER = LanguageServer(
     "subleq-language-server",
@@ -17,16 +18,55 @@ SERVER = LanguageServer(
 )
 
 
-@lru_cache(maxsize=32)
-def analyze(text: str) -> DocumentAnalysis:
-    """Reuse an analysis while a document's text is unchanged."""
-    return DocumentAnalysis.parse(text)
+def included_symbols(
+    text: str, directory: Path, seen: set[Path]
+) -> tuple[dict[str, Symbol], dict[str, Symbol]]:
+    """Load editor metadata from recursively included source modules."""
+    macros: dict[str, Symbol] = {}
+    labels: dict[str, Symbol] = {}
+    for line in text.splitlines(keepends=True):
+        match = INCLUDE_RE.fullmatch(line)
+        if match is None:
+            continue
+
+        relative_name = match.group("relative")
+        if relative_name is not None:
+            path = (directory / relative_name).resolve()
+        else:
+            resource = resources.files("subleq.stdlib").joinpath(match.group("stdlib"))
+            if not resource.is_file():
+                continue
+            path = Path(str(resource)).resolve()
+
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        included_text = path.read_text()
+        nested_macros, nested_labels = included_symbols(
+            included_text, path.parent, seen
+        )
+        analysis = DocumentAnalysis.parse(
+            included_text,
+            uri=path.as_uri(),
+            external_macros=nested_macros,
+            external_global_labels=nested_labels,
+        )
+        macros.update(analysis.macros)
+        labels.update(analysis.global_labels)
+    return macros, labels
 
 
 def document_analysis(ls: LanguageServer, uri: str) -> DocumentAnalysis:
     """Analyze the current in-memory version of a document."""
     document = ls.workspace.get_text_document(uri)
-    return analyze(document.source)
+    path = Path(document.path)
+    macros, labels = included_symbols(document.source, path.parent, {path.resolve()})
+    return DocumentAnalysis.parse(
+        document.source,
+        uri=uri,
+        external_macros=macros,
+        external_global_labels=labels,
+    )
 
 
 def utf16_to_index(text: str, character: int) -> int:
@@ -58,6 +98,20 @@ def lsp_range(analysis: DocumentAnalysis, span: Span) -> types.Range:
     return types.Range(
         lsp_position(analysis, span.line, span.start),
         lsp_position(analysis, span.line, span.end),
+    )
+
+
+def symbol_range(symbol: Symbol) -> types.Range:
+    """Convert a definition span using the definition document's source line."""
+    return types.Range(
+        types.Position(
+            symbol.span.line,
+            index_to_utf16(symbol.source_line, symbol.span.start),
+        ),
+        types.Position(
+            symbol.span.line,
+            index_to_utf16(symbol.source_line, symbol.span.end),
+        ),
     )
 
 
@@ -137,8 +191,8 @@ def definition(
     if symbol is None:
         return None
     return types.Location(
-        uri=params.text_document.uri,
-        range=lsp_range(analysis, symbol.span),
+        uri=symbol.uri or params.text_document.uri,
+        range=symbol_range(symbol),
     )
 
 

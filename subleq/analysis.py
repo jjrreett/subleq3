@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 TOKEN_RE = re.compile(rf"@?{IDENT}|\.[A-Za-z_][A-Za-z0-9_]*")
 LABEL_RE = re.compile(rf"\s*(?P<name>@?{IDENT})\s*:")
@@ -15,6 +14,10 @@ INSTRUCTION_RE = re.compile(rf"\s*(?P<name>{IDENT})(?P<arguments>.*)$")
 
 
 DIRECTIVE_DOCS = {
+    ".include": (
+        'Link a project module with `.include "path.s"` or a packaged '
+        "standard-library module with `.include <core.s>`."
+    ),
     ".data": "Begin a general data block. End it with `.endd`.",
     ".endd": "End a `.data` block.",
     ".macro": "Define a macro. The first argument is its name.",
@@ -54,6 +57,8 @@ class Symbol:
     documentation: str = ""
     parameters: tuple[str, ...] = ()
     instruction_count: int | None = None
+    uri: str | None = None
+    source_line: str = ""
 
 
 @dataclass
@@ -108,11 +113,28 @@ class DocumentAnalysis:
     diagnostics: list[AnalysisDiagnostic] = field(default_factory=list)
     scope_by_line: list[str] = field(default_factory=list)
     macro_by_line: list[str | None] = field(default_factory=list)
+    uri: str | None = None
+    external_macro_names: set[str] = field(default_factory=set)
 
     @classmethod
-    def parse(cls, text: str) -> DocumentAnalysis:
+    def parse(
+        cls,
+        text: str,
+        *,
+        uri: str | None = None,
+        external_macros: dict[str, Symbol] | None = None,
+        external_global_labels: dict[str, Symbol] | None = None,
+    ) -> DocumentAnalysis:
         """Analyze source without requiring it to be complete or compilable."""
-        analysis = cls(text=text, lines=text.splitlines())
+        macros = dict(external_macros or {})
+        analysis = cls(
+            text=text,
+            lines=text.splitlines(),
+            macros=macros,
+            global_labels=dict(external_global_labels or {}),
+            uri=uri,
+            external_macro_names=set(macros),
+        )
         analysis._scan()
         analysis._finish()
         return analysis
@@ -166,6 +188,8 @@ class DocumentAnalysis:
                         scope=macro_scope(name),
                         documentation=join_comments(pending_comments),
                         parameters=signature[1:],
+                        uri=self.uri,
+                        source_line=source_line,
                     )
                 current_macro = name
                 self.scope_by_line.append(macro_scope(name))
@@ -198,6 +222,8 @@ class DocumentAnalysis:
                             span,
                             scope,
                             join_comments(pending_comments) if first_label else "",
+                            uri=self.uri,
+                            source_line=source_line,
                         ),
                     )
                 elif name.startswith("@"):
@@ -210,6 +236,8 @@ class DocumentAnalysis:
                             span,
                             current_global,
                             join_comments(pending_comments) if first_label else "",
+                            uri=self.uri,
+                            source_line=source_line,
                         ),
                     )
                 else:
@@ -221,6 +249,8 @@ class DocumentAnalysis:
                         span,
                         current_global,
                         join_comments(pending_comments) if first_label else "",
+                        uri=self.uri,
+                        source_line=source_line,
                     )
                     if name in self.global_labels:
                         self.diagnostics.append(
@@ -316,13 +346,20 @@ class DocumentAnalysis:
                     )
                 )
 
-        cache: dict[str, int | None] = {}
-        for macro in self.macros.values():
+        cache: dict[str, int | None] = {
+            name: self.macros[name].instruction_count
+            for name in self.external_macro_names
+        }
+        for name, macro in self.macros.items():
+            if name in self.external_macro_names:
+                continue
             macro.instruction_count = self._macro_instruction_count(
                 macro.name, cache, ()
             )
 
-        for macro in self.macros.values():
+        for name, macro in self.macros.items():
+            if name in self.external_macro_names:
+                continue
             if macro.instruction_count is None:
                 self.diagnostics.append(
                     AnalysisDiagnostic(
