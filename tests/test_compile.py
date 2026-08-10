@@ -116,6 +116,12 @@ root:
             [ord("A"), 10, 9, ord('"'), ord("\\"), ord("B"), 13, 0, 0],
         )
 
+    def test_string_directives_preserve_spaces_and_tabs(self) -> None:
+        self.assert_compiles_to(
+            '.ascii "Hello world\t!"\n',
+            [*map(ord, "Hello world\t!")],
+        )
+
     def test_literal_pool_hoists_and_deduplicates_immediate_values(self) -> None:
         source = """\
 .macro subtract, source, destination

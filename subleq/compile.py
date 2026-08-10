@@ -237,7 +237,19 @@ class _SubleqTransformer(Transformer):
         return _LiteralPool()
 
     def string(self, items):
-        return [ord(_STRING_ESCAPES.get(str(char), str(char))) for char in items]
+        (token,) = items
+        raw = str(token)[1:-1]
+        characters: list[str] = []
+        index = 0
+        while index < len(raw):
+            if raw[index] == "\\":
+                escape = raw[index : index + 2]
+                characters.append(_STRING_ESCAPES[escape])
+                index += 2
+                continue
+            characters.append(raw[index])
+            index += 1
+        return [ord(char) for char in characters]
 
     def LOCAL_LABEL(self, token):
         return token.value

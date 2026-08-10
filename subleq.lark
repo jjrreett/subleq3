@@ -54,9 +54,8 @@ QMARK: "?"
 
 _NEWLINE: "\n"
 
-string: "\"" ASCII_CHAR* "\""
-ASCII_CHAR: /[^"\\\n\r]/ | ESCAPED_CHAR
-ESCAPED_CHAR: "\\" /["\\nrt0]/
+string: STRING
+STRING: /"(?:[^"\\\n\r]|\\["\\nrt0])*"/
 
 %ignore /[ \t]+/
 %ignore /;[^\n]*/
