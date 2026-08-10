@@ -11,6 +11,7 @@ wheels/
 
 *.npy
 *.labels
+debug.log
 
 # Editor extension dependencies and packages
 editors/vscode/node_modules/
