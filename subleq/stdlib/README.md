@@ -159,3 +159,13 @@ their ABI cells and stack, and expects one program-level `.literals` pool.
 | --- | --- | --- |
 | `func_print_bin` | Print all 16 binary digits and a newline | consumes one argument |
 | `func_print_dec` | Print all five unsigned decimal digits and a newline | consumes one argument |
+
+## Tests
+
+The standard library has executable assembly test cases for core arithmetic,
+double-dabble conversion, indirect memory, stack-based calls, text output, and
+integer printing. Run them from the project root:
+
+```powershell
+subleq test subleq/stdlib/stdlib_tests.s
+```
