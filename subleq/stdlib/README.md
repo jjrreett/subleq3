@@ -18,7 +18,7 @@ Programs using `core.s` provide these cells:
 
 ```asm
 z:  .word 0
-.literals
+.literals 2
 ```
 
 `z` is shared scratch storage and is restored to zero after every library
@@ -127,7 +127,7 @@ intact, making it suitable for traversing strings and tables. Importing
 ## `io.s`
 
 Character-output helpers. It imports `memory.s`, requires the fixed `IO` cell,
-and expects the program to place one `.literals` directive for newline values.
+and expects the program to reserve `.literals` capacity for newline values.
 
 | Macro | Effect | State changed |
 | --- | --- | --- |
@@ -137,7 +137,7 @@ and expects the program to place one `.literals` directive for newline values.
 ## `math.s`
 
 Extended integer arithmetic. It imports `core.s`; shift macros that use
-immediates require the program's `.literals` pool.
+immediates require capacity in the program's `.literals` pool.
 
 | Macro | Effect | State changed |
 | --- | --- | --- |
@@ -153,7 +153,8 @@ immediates require the program's `.literals` pool.
 Callable integer-output routines. Unlike the macro-only modules, this module
 emits executable words and must be included after the reset jump and fixed
 `IO`/`INSPECT` cells. It imports `subroutine.s`, `io.s`, and `math.s`, requires
-their ABI cells and stack, and expects one program-level `.literals` pool.
+their ABI cells and stack, and expects a sufficiently large program-level
+`.literals` pool.
 
 | Subroutine | Effect | Stack effect |
 | --- | --- | --- |

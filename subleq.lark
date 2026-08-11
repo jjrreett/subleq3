@@ -35,7 +35,7 @@ ascii: ".ascii" string _NEWLINE
 asciiz: ".asciiz" string _NEWLINE
 fill: ".fill" NUMBER "," NUMBER _NEWLINE
 reserve: ".res" NUMBER _NEWLINE
-literal_pool: ".literals" _NEWLINE
+literal_pool: ".literals" NUMBER _NEWLINE
 
 
 instruction: IDENT args? _NEWLINE

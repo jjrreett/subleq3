@@ -37,8 +37,8 @@ DIRECTIVE_DOCS = {
     ".fill": "Emit `count` copies of a numeric value.",
     ".res": "Reserve a number of zero-filled words.",
     ".literals": (
-        "Emit one word for every unique `#number` immediate used by the program. "
-        "Immediate operands are rewritten to the corresponding word addresses."
+        "Reserve `.literals count` words for unique `#number` immediates. "
+        "Compilation fails when the program needs more than `count` words."
     ),
     ".test": "Begin an embedded source test. End it with `.endt`.",
     ".endt": "End an embedded source test.",

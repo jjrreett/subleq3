@@ -17,7 +17,7 @@ from rich import print  # noqa: A004
 from .analysis import DocumentAnalysis
 from .harness import HarnessSyntaxError, strip_test_harness
 from .link import link_sources
-from .subleq import Lark_StandAlone, Transformer, VisitError
+from .subleq import Lark_StandAlone, Transformer, UnexpectedInput, VisitError
 
 DEBUG = False
 
@@ -87,7 +87,8 @@ class _Literal:
 
 
 @dataclass(frozen=True)
-class _LiteralPool: ...
+class _LiteralPool:
+    capacity: int
 
 
 _InstructionToken = str | int | _Next | _Label | _Literal | _LiteralPool
@@ -267,8 +268,9 @@ class _SubleqTransformer(Transformer):
         (value,) = items
         return _Literal(value % (1 << 16))
 
-    def literal_pool(self, items) -> _LiteralPool:  # noqa: ARG002
-        return _LiteralPool()
+    def literal_pool(self, items) -> _LiteralPool:
+        (capacity,) = items
+        return _LiteralPool(capacity)
 
     def string(self, items):
         (token,) = items
@@ -409,7 +411,10 @@ def subleq_compile(
     except HarnessSyntaxError as error:
         raise CompilationError(str(error)) from error
     parser = Lark_StandAlone(propagate_positions=True)
-    tree = parser.parse(source)
+    try:
+        tree = parser.parse(source)
+    except UnexpectedInput as error:
+        raise CompilationError(str(error)) from error
     debug(tree)
     transformer = _SubleqTransformer()
     try:
@@ -430,7 +435,17 @@ def subleq_compile(
         raise CompilationError("The .literals directive may appear only once")
     if literal_values and literal_pool_count == 0:
         raise CompilationError(
-            "Immediate literals require a .literals directive to reserve their storage"
+            "Immediate literals require a .literals count directive with enough capacity"
+        )
+    literal_pool = next(
+        (inst for inst in instructions if isinstance(inst, _LiteralPool)), None
+    )
+    if literal_pool is not None and literal_pool.capacity < 0:
+        raise CompilationError("The .literals capacity cannot be negative")
+    if literal_pool is not None and len(literal_values) > literal_pool.capacity:
+        raise CompilationError(
+            f"The .literals pool reserves {literal_pool.capacity} words, "
+            f"but {len(literal_values)} unique literals are required"
         )
 
     # Labels do not occupy memory, so the first pass records their addresses
@@ -447,6 +462,9 @@ def subleq_compile(
             for literal_value in literal_values:
                 literal_addresses[literal_value] = address
                 scoped_values.append((literal_value, scope))
+                address += 1
+            for _ in range(inst.capacity - len(literal_values)):
+                scoped_values.append((0, scope))
                 address += 1
             continue
 

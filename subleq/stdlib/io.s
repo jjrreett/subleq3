@@ -4,7 +4,7 @@
 ;   IO: address 3 memory-mapped I/O cell
 ;   z:  .word 0
 ;
-; Programs using `newline` must provide a `.literals` pool for #10 and #13.
+; Programs using `newline` must reserve `.literals` capacity for #10 and #13.
 
 .include <memory.s>
 

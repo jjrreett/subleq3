@@ -100,7 +100,7 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.diagnostics, [])
 
     def test_literal_pool_directive_has_hover_documentation(self) -> None:
-        analysis = DocumentAnalysis.parse(".literals\n")
+        analysis = DocumentAnalysis.parse(".literals 4\n")
 
         hover = analysis.hover_at(0, 2)
 

@@ -9,7 +9,7 @@
 ;   stack:     .res <capacity>
 ;   stack_ptr: .word stack
 ;
-; The program must also provide one `.literals` pool.
+; The program must also reserve a sufficiently large `.literals` pool.
 
 .include <subroutine.s>
 .include <io.s>

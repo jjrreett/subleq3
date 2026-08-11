@@ -141,7 +141,7 @@ Directives emit words at the current position:
 .asciiz "World"
 .fill  10, $00
 .res   256
-.literals
+.literals 16
 ```
 
 Their intended meanings are:
@@ -155,7 +155,7 @@ Their intended meanings are:
 | `.asciiz "text"` | The characters followed by a zero word. |
 | `.fill count, value` | `count` copies of `value`. |
 | `.res count` | `count` zero words. |
-| `.literals` | One word for each unique immediate literal used by the program. |
+| `.literals count` | Reserve `count` words for the program's unique immediate literals. |
 
 `.word` accepts labels and macro arguments because machine addresses are
 16-bit words. `.byte` and `.dword` remain numeric-only until their truncation
@@ -176,9 +176,9 @@ dispatch_table: .data
 
 Instruction operands normally name memory cells or explicit addresses. An
 operand prefixed with `#` instead names a constant value. The compiler finds
-every such immediate, deduplicates equal 16-bit values, emits them where the
-single `.literals` directive appears, and rewrites each operand to the emitted
-word's address.
+every such immediate, deduplicates equal 16-bit values, emits them at the front
+of the explicitly sized `.literals count` pool, and rewrites each operand to
+the emitted word's address. Unused pool words remain zero.
 
 ```asm
 .include <core.s>
@@ -195,13 +195,15 @@ counter: .word 0
 mask:    .word 0
 z:       .word 0
 
-.literals
+.literals 2
 ```
 
 Repeated spellings of the same 16-bit value share one word, so `#-1` and
 `#$ffff` refer to the same pool entry. A program using `#` operands must contain
-exactly one `.literals` directive. Place the directive where literal data cannot
-be executed—for example after the program's code and ordinary data.
+exactly one `.literals count` directive with capacity for every unique value;
+compilation fails if that capacity is too small. Place the directive where
+literal data cannot be executed—for example after the program's code and
+ordinary data.
 
 The existing code also uses one-line blocks:
 

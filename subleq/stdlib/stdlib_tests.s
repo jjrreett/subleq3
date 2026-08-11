@@ -38,7 +38,7 @@ halt:
 z:          .word 0
 low_digit:  .word 4
 high_digit: .word 5
-.literals
+.literals 2
     .assert low_digit, 4
     .assert high_digit, 8
 .endt
@@ -83,7 +83,7 @@ output:    .word 0
 argument:  .word 0
 stack:     .res 16
 stack_ptr: .word stack
-.literals
+.literals 2
     .assert output, 42
     .assert stack_ptr, stack
 .endt
@@ -100,7 +100,7 @@ halt:
     subleq z, z, 0
 z:       .word 0
 message: .asciiz "OK"
-.literals
+.literals 4
     .assert-output "OK\n\r"
 .endt
 
@@ -121,6 +121,6 @@ z:         .word 0
 value:     .word 42
 stack:     .res 16
 stack_ptr: .word stack
-.literals
+.literals 16
     .assert-output "0000000000101010\n\r00042\n\r"
 .endt

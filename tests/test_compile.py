@@ -163,7 +163,7 @@ start:
     subleq zero, zero, done
 done:
     subleq zero, zero, 0
-.literals
+.literals 1
 target: .word 0
 zero: .word 0
 """
@@ -175,21 +175,41 @@ zero: .word 0
 
     def test_immediate_literal_requires_a_pool(self) -> None:
         with self.assertRaisesRegex(
-            CompilationError, "Immediate literals require a .literals directive"
+            CompilationError, "Immediate literals require a .literals count directive"
         ):
             subleq_compile("subleq #1, 0, 0\n")
 
     def test_literal_pool_deduplicates_equivalent_16_bit_values(self) -> None:
         self.assert_compiles_to(
-            "subleq #-1, #$ffff, 0\n.literals\n",
+            "subleq #-1, #$ffff, 0\n.literals 1\n",
             [3, 3, 0, 0xFFFF],
         )
+
+    def test_literal_pool_reserves_its_declared_capacity(self) -> None:
+        self.assert_compiles_to(
+            "subleq #7, #7, 0\n.literals 3\n",
+            [3, 3, 0, 7, 0, 0],
+        )
+
+    def test_literal_pool_rejects_insufficient_capacity(self) -> None:
+        with self.assertRaisesRegex(
+            CompilationError, "reserves 1 words, but 2 unique literals are required"
+        ):
+            subleq_compile("subleq #1, #2, 0\n.literals 1\n")
+
+    def test_literal_pool_rejects_negative_capacity(self) -> None:
+        with self.assertRaisesRegex(CompilationError, "capacity cannot be negative"):
+            subleq_compile(".literals -1\n")
+
+    def test_literal_pool_requires_a_capacity(self) -> None:
+        with self.assertRaises(CompilationError):
+            subleq_compile(".literals\n")
 
     def test_literal_pool_may_appear_only_once(self) -> None:
         with self.assertRaisesRegex(
             CompilationError, "The .literals directive may appear only once"
         ):
-            subleq_compile(".literals\n.literals\n")
+            subleq_compile(".literals 0\n.literals 0\n")
 
     def test_undefined_local_label_has_clear_error(self) -> None:
         with self.assertRaisesRegex(

@@ -156,7 +156,7 @@ output:    .word 0
 argument:  .word 0
 stack:     .res 16
 stack_ptr: .word stack
-.literals
+.literals 2
 """
             )
 
@@ -181,7 +181,7 @@ stack_ptr: .word stack
                 ".include <memory.s>\n"
                 ".include <io.s>\n"
                 ".include <math.s>\n"
-                ".literals\n"
+                ".literals 0\n"
                 ".word 0\n"
             )
 
@@ -213,7 +213,7 @@ z:         .word 0
 value:     .word 42
 stack:     .res 16
 stack_ptr: .word stack
-.literals
+.literals 16
 """
             )
 
