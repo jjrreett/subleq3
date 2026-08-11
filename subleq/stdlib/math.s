@@ -1,7 +1,7 @@
 ; SUBLEQ standard library: extended integer arithmetic
 ;
-; Requires the core ABI cells `z`, `p1`, and `m1`. Immediate shifts require a
-; program-level `.literals` pool.
+; Requires the core ABI cell `z` and a program-level `.literals` pool for
+; immediate constants.
 
 .include <core.s>
 
@@ -12,7 +12,7 @@
 .macro mul source, destination
     inc source
 @loop:
-    subleq p1, source, @break
+    subleq #1, source, @break
     add destination, @temporary
     jmp @loop
 @break:
@@ -32,7 +32,7 @@
     cpy count, @counter
     inc @counter
 @loop:
-    subleq p1, @counter, @return
+    subleq #1, @counter, @return
     dbl value
     jmp @loop
 
@@ -48,7 +48,7 @@
     add #16, @count
     sub value, @count
     inc @count
-    subleq p1, @count, @end
+    subleq #1, @count, @end
     jmp @rshift_start
 @shift:
     dbl source
@@ -57,14 +57,14 @@
 @rshift_start:
     clr @temporary
     add source, @temporary
-    subleq m1, @temporary, @increment_out
+    subleq #-1, @temporary, @increment_out
     subleq @temporary, @temporary, @check_break
 
 @increment_out:
     inc @out
 
 @check_break:
-    subleq p1, @count, @end
+    subleq #1, @count, @end
     jmp @shift
 
 @end:

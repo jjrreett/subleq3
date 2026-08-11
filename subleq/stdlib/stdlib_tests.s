@@ -18,8 +18,6 @@ start:
 halt:
     subleq z, z, 0
 z:      .word 0
-p1:     .word 1
-m1:     .word -1
 left:   .word 19
 right:  .word 23
 result: .word 0
@@ -38,8 +36,6 @@ start:
 halt:
     subleq z, z, 0
 z:          .word 0
-p1:         .word 1
-m1:         .word -1
 low_digit:  .word 4
 high_digit: .word 5
 .literals
@@ -57,8 +53,6 @@ start:
 halt:
     subleq z, z, 0
 z:           .word 0
-p1:          .word 1
-m1:          .word -1
 source:      .word $1234
 pointer:     .word source
 destination: .word 0
@@ -84,13 +78,12 @@ main:
 halt:
     subleq z, z, 0
 z:         .word 0
-p1:        .word 1
-m1:        .word -1
 input:     .word 21
 output:    .word 0
 argument:  .word 0
 stack:     .res 16
 stack_ptr: .word stack
+.literals
     .assert output, 42
     .assert stack_ptr, stack
 .endt
@@ -106,8 +99,6 @@ start:
 halt:
     subleq z, z, 0
 z:       .word 0
-p1:      .word 1
-m1:      .word -1
 message: .asciiz "OK"
 .literals
     .assert-output "OK\n\r"
@@ -127,8 +118,6 @@ main:
 halt:
     subleq z, z, 0
 z:         .word 0
-p1:        .word 1
-m1:        .word -1
 value:     .word 42
 stack:     .res 16
 stack_ptr: .word stack

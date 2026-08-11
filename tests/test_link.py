@@ -109,8 +109,6 @@ start:
 halt:
     subleq z, z, 0
 z:      .word 0
-p1:     .word 1
-m1:     .word -1
 input:  .word 7
 result: .word 99
 """
@@ -153,13 +151,12 @@ halt:
     subleq z, z, 0
 
 z:         .word 0
-p1:        .word 1
-m1:        .word -1
 input:     .word 21
 output:    .word 0
 argument:  .word 0
 stack:     .res 16
 stack_ptr: .word stack
+.literals
 """
             )
 
@@ -213,8 +210,6 @@ halt:
     subleq z, z, 0
 
 z:         .word 0
-p1:        .word 1
-m1:        .word -1
 value:     .word 42
 stack:     .res 16
 stack_ptr: .word stack

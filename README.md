@@ -194,8 +194,6 @@ done:
 counter: .word 0
 mask:    .word 0
 z:       .word 0
-p1:      .word 1
-m1:      .word -1
 
 .literals
 ```
@@ -304,8 +302,9 @@ Packaged library modules use angle brackets instead of quoted paths:
 ```
 
 `core.s` is macro-only and therefore emits no words. It provides arithmetic,
-copy, and signed branch operations. Programs allocate three documented ABI
-cells named `z`, `p1`, and `m1`.
+copy, and signed branch operations. Programs allocate the documented `z`
+scratch cell and an immediate-literal pool when expanded operations need
+constants.
 
 ```asm
 .include <core.s>
@@ -318,8 +317,6 @@ done:
     subleq z, z, 0
 
 z:     .word 0
-p1:    .word 1
-m1:    .word -1
 input: .word 7
 total: .word 0
 ```

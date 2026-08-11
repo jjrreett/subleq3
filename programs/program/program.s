@@ -66,8 +66,6 @@ input:      .word 0
 stack:      .res 256
 stack_ptr:  .word stack
 z:          .word 0
-p1:         .word 1
-m1:         .word -1
 tmp:         .word 0
 .literals
 boot_prompt: .asciiz "Welcome to the Subleq CPU Emulator!\n"

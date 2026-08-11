@@ -42,8 +42,6 @@ start:
 halt:
     subleq z, z, 0
 z:         .word 0
-p1:        .word 1
-m1:        .word -1
 input:     .word 0
 increment: .word 1
 result:    .word 0

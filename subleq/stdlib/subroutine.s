@@ -7,8 +7,9 @@
 ;   stack_ptr: .word stack
 ;   stack:     .res <capacity>
 ;
-; The core ABI cells `z`, `p1`, and `m1` are also required. `stack_ptr` points
-; to the next free stack word. The stack has no bounds checking.
+; The core ABI cell `z` is also required. `stack_ptr` points to the next free
+; stack word. The stack has no bounds checking. Stack operations use the
+; program's immediate-literal pool for positive and negative one.
 
 .include <memory.s>
 

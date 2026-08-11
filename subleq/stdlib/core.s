@@ -4,11 +4,10 @@
 ;
 ; Required program cells:
 ;   z:  .word 0
-;   p1: .word 1
-;   m1: .word -1
 ;
-; `z` is scratch storage but every macro restores it to zero. `p1` and `m1`
-; are read-only. This module emits no words.
+; `z` is scratch storage but every macro restores it to zero. Operations that
+; need positive or negative one use the program's immediate-literal pool. This
+; module emits no words.
 
 ; `jmp target`
 ;
@@ -58,7 +57,7 @@
 ; Decrement `target` by one.
 ; Instructions: 1. Changes: `target`.
 .macro dec target
-    sub p1, target
+    sub #1, target
 .endm
 
 ; `inc target`
@@ -66,7 +65,7 @@
 ; Increment `target` by one.
 ; Instructions: 1. Changes: `target`.
 .macro inc target
-    sub m1, target
+    sub #-1, target
 .endm
 
 ; `dbl target`

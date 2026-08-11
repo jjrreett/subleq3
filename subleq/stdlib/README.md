@@ -18,14 +18,13 @@ Programs using `core.s` provide these cells:
 
 ```asm
 z:  .word 0
-p1: .word 1
-m1: .word -1
+.literals
 ```
 
 `z` is shared scratch storage and is restored to zero after every library
-operation. `p1` and `m1` are read-only constants. Library macros are not
-reentrant or interrupt-safe because they share `z` and may contain private
-self-modifying words.
+operation. Positive and negative one use immediate literals instead of ABI
+cells. Library macros are not reentrant or interrupt-safe because they share
+`z` and may contain private self-modifying words.
 
 ## `core.s`
 
@@ -61,7 +60,8 @@ program normally imports only:
 .include <subroutine.s>
 ```
 
-In addition to the core ABI cells, programs provide an upward-growing stack:
+In addition to `z` and an immediate-literal pool, programs provide an
+upward-growing stack:
 
 ```asm
 stack:     .res 256

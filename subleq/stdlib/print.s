@@ -6,8 +6,6 @@
 ; Required program cells:
 ;   IO:        address 3 memory-mapped I/O cell
 ;   z:         .word 0
-;   p1:        .word 1
-;   m1:        .word -1
 ;   stack:     .res <capacity>
 ;   stack_ptr: .word stack
 ;
