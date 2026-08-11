@@ -1,36 +1,36 @@
-.macro jmp, a       ; 1 instruction
+.macro jmp a       ; 1 instruction
     subleq z, z, a
 .endm
 
-.macro clr, a       ; 1 instruction
+.macro clr a       ; 1 instruction
     subleq a, a, ?
 .endm
 
-.macro sub, a, b    ; 1 instruction
+.macro sub a, b    ; 1 instruction
     subleq a, b, ?
 .endm
 
 ;;;;;;;; b = b + a ;;;;;;;;
-.macro add, a, b    ; 3 instruction
+.macro add a, b    ; 3 instruction
     sub a, z
     sub z, b
     clr z
 .endm
 
 ;;;;;;;; b = a ;;;;;;;;
-.macro cpy, a, b    ; 4 instructions
+.macro cpy a, b    ; 4 instructions
     clr b
     add a, b
 .endm
 
 
 ;;;;;;;; a = a - 1 ;;;;;;;;
-.macro dec, a       ; 1 instruction
+.macro dec a       ; 1 instruction
     sub p1, a
 .endm
 
 ;;;;;;;; a = a + 1 ;;;;;;;;
-.macro inc, a       ; 1 instruction
+.macro inc a       ; 1 instruction
     sub m1, a
 .endm
 
@@ -50,12 +50,12 @@
 ; BVS     | Branch if Overflow Set      | -
 
 ;;;;;;;; if a <= 0: jmp b ;;;;;;;;
-.macro bleq, a, b       ; 1 instruction
+.macro bleq a, b       ; 1 instruction
     subleq z, a, b
 .endm
 
 ;;;;;;;; if a > 0: jmp b ;;;;;;;;
-.macro bgt, a, b        ; 2 instructions
+.macro bgt a, b        ; 2 instructions
                         ; not(a <= 0) -> jump
         bleq a, @return  ; a <= 0, don't take the jump to b
         jmp b
@@ -63,7 +63,7 @@
 .endm
 
 ;;;;;;;; if a == 0: jmp b ;;;;;;;;
-.macro beq, a, b        ; 9 instructions
+.macro beq a, b        ; 9 instructions
                            ; not(a > 0) and (a+1 > 0) -> jump
             bgt a, @return          ; a > 0, do not jump
             inc a
@@ -77,20 +77,20 @@
 .endm
 
 ;;;;;;; if a != 0: jmp b ;;;;;;;;
-.macro bne, a, b        ; 10 instructions
+.macro bne a, b        ; 10 instructions
             beq a, @return
             jmp b
     @return:
 .endm
 ;;;;;;;; if a >= 0: jmp b ;;;;;;;;
-.macro bpl, a, b        ; 11 instructions
+.macro bpl a, b        ; 11 instructions
                             ; (a > 0) or (a == 0) -> jump
     bgt a, b                ; a > 0, jump
     beq a, b                ; a == 0, jump
 .endm
 
 ;;;;;;;; if a <  0: jmp b ;;;;;;;;
-.macro bmi, a, b        ; 10 instructions
+.macro bmi a, b        ; 10 instructions
                             ; not(a == 0) and (a <= 0) -> jump
     beq a, @return           ; a == 0: therefor not a < 0, return
     bleq a, b               ; a <= 0, but not 0 -> a < 0, take the jump
@@ -99,7 +99,7 @@
 
 
 ;;;;;;;; b = b * a ;;;;;;;;
-.macro mul, a, b
+.macro mul a, b
         inc a
     @loop:
         subleq p1, a, @break           ; decrement 'a' by 1, break if 0
@@ -115,12 +115,12 @@
 .endm
 
 ;;;;;;;; a = a + a ;;;;;;;;
-.macro dbl, a
+.macro dbl a
     add a, a
 .endm
 
 ;;;;;;;; b = b << a ;;;;;;;;
-.macro lsl, a, b
+.macro lsl a, b
         cpy a, @counter
         inc @counter
     @loop:
@@ -133,7 +133,7 @@
 
 
 ;;;;;;;; b = b >> a ;;;;;;;;
-.macro lsr, a, b
+.macro lsr a, b
         add literal_16, @count
         sub b, @count
         inc @count
@@ -174,7 +174,7 @@
 ; ptr is the addrs of the -value (as long as we negate the number going in, we can negate it going out)
 ; executes the date block, falls through
 ;;;;;;;; dest = *ptr ;;;;;;;;
-.macro rpt, ptr, dest       
+.macro rpt ptr, dest
     clr @code_a
     clr @code_a0
     clr @code_a1
@@ -198,7 +198,7 @@
 .endm
 
 ;;;;;;;; *ptr = src ;;;;;;;;
-.macro wpt, src, ptr
+.macro wpt src, ptr
     cpy ptr, @code_b
     jmp @code_a
 
@@ -207,17 +207,17 @@
     @code_c:  .word ?                ; next instruction
 .endm
 
-.macro psh, a
+.macro psh a
     wpt a, SP
     inc SP
 .endm
 
-.macro pop, a
+.macro pop a
     dec SP
     rpt SP, a
 .endm
 
-.macro jsr, func_addr
+.macro jsr func_addr
     wpt @return_addr, SP
     inc SP
     jmp func_addr
@@ -241,7 +241,7 @@
 .endm
 
 ;;;;;;;; 4 bit shift, inc output if overflow ;;;;;;;;
-.macro nibble_lslo, input, output                
+.macro nibble_lslo input, output
         dbl input
         cpy input, tmp
         dbl tmp
@@ -265,7 +265,7 @@
 .endm
 
 ;;;;;;;; 8 bit shift, inc output if overflow ;;;;;;;;
-.macro byte_lslo, input, output
+.macro byte_lslo input, output
         dbl input
         cpy input, tmp
         dbl tmp
@@ -284,7 +284,7 @@
 .endm
 
 ;;;;;;;; 16 bit shift, inc output if overflow ;;;;;;;;
-.macro lslo, input, output
+.macro lslo input, output
         bpl input, @no_overflow
         inc output             ; inc output if overflow, always shift input
     @no_overflow:
@@ -297,7 +297,7 @@
     sub ascii_cr, IO
 .endm
 
-.macro double_dabble_add_3, x
+.macro double_dabble_add_3 x
         cpy x, @tmp
         subleq literal_4, @tmp, @return      ; if x ≤ 4, skip
         add literal_3, x                  ; else x += 3
