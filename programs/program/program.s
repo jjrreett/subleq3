@@ -32,18 +32,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-jmp boot
-IO:         .word $00       ; expected to be at addr 1
-INSPECT:    .word $00       ; expected to be at addr 2
-AC:         .word $00       ; accumulator
-XR:         .word $00       ; x register
-YR:         .word $00       ; y register
-SP:         .word $00       ; stack pointer
-SR:         .fill 146, $00  ; stack register
+.bootstrap
 
 .include <print.s>
 
-boot:
+main:
         print_asciiz boot_prompt
         jmp test
 

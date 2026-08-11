@@ -108,6 +108,16 @@ class AnalysisTests(unittest.TestCase):
         assert hover is not None
         self.assertIn("#number", hover.markdown)
 
+    def test_bootstrap_directive_has_hover_documentation(self) -> None:
+        analysis = DocumentAnalysis.parse(".bootstrap\nmain:\n")
+
+        hover = analysis.hover_at(0, 3)
+
+        self.assertIsNotNone(hover)
+        assert hover is not None
+        self.assertIn("`main`", hover.markdown)
+        self.assertIn("addresses 3 and 4", hover.markdown)
+
     def test_bad_invocation_reports_diagnostic(self) -> None:
         analysis = DocumentAnalysis.parse("main:\n    missing 1\n")
 

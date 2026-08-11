@@ -24,6 +24,7 @@ local_label_def: "@" IDENT ":"
                 | fill
                 | reserve
                 | literal_pool
+                | bootstrap
 
 data: ".data" (local_label_def | label_def | value | _NEWLINE)* ".endd" _NEWLINE
 macro: ".macro" macro_signature _NEWLINE stmt+ ".endm" _NEWLINE
@@ -36,6 +37,7 @@ asciiz: ".asciiz" string _NEWLINE
 fill: ".fill" NUMBER "," NUMBER _NEWLINE
 reserve: ".res" NUMBER _NEWLINE
 literal_pool: ".literals" NUMBER _NEWLINE
+bootstrap: ".bootstrap" _NEWLINE
 
 
 instruction: IDENT args? _NEWLINE

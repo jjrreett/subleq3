@@ -28,13 +28,14 @@ else:
 
 Branching to address `0` halts the emulator.
 
-The first instruction in a normal program is three words long, so the example
-programs place the special cells immediately after it:
+Normal programs begin with `.bootstrap`, which emits an unconditional jump to
+the global `main` label and defines the special cells at their fixed addresses:
 
 ```asm
-jmp start
-IO:      .word 0        ; address 3
-INSPECT: .word 0        ; address 4
+.bootstrap
+
+main:
+    ; program code
 ```
 
 - Address `3` (`IO`) is memory-mapped character I/O. Reading from it waits for
@@ -44,7 +45,8 @@ INSPECT: .word 0        ; address 4
 - Address `0` is also the halt target.
 
 These addresses are fixed by `subleq/const.py`; labels merely give them useful
-names.
+names. `.bootstrap` must be the first word-emitting construct. It also reserves
+one private zero word at address 5 for its initial branch.
 
 ## Source syntax
 
@@ -311,7 +313,8 @@ constants.
 ```asm
 .include <core.s>
 
-start:
+.bootstrap
+main:
     clr total
     add input, total
     jmp done

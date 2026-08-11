@@ -247,6 +247,31 @@ zero:
 
         self.assertEqual(instruction_count, 2)
 
+    def test_bootstrap_defines_entrypoint_and_device_cells(self) -> None:
+        source = """\
+.bootstrap
+main:
+    subleq z, z, 0
+z: .word 0
+"""
+
+        data, labels = subleq_compile(source)
+
+        self.assertEqual(labels["IO"], 3)
+        self.assertEqual(labels["INSPECT"], 4)
+        self.assertEqual(labels["main"], 6)
+        self.assertEqual(data.tolist(), [5, 5, 6, 0, 0, 0, 9, 9, 0, 0])
+
+    def test_bootstrap_must_be_first_emitted_construct(self) -> None:
+        with self.assertRaisesRegex(CompilationError, "must emit at address 0"):
+            subleq_compile(
+                ".word 0\n.bootstrap\nmain: .word 0\nz: .word 0\n"
+            )
+
+    def test_bootstrap_requires_main(self) -> None:
+        with self.assertRaisesRegex(CompilationError, "Global label 'main'"):
+            subleq_compile(".bootstrap\nz: .word 0\n")
+
 
 class RuntimeInputTests(unittest.TestCase):
     def test_io_read_does_not_add_a_host_prompt(self) -> None:

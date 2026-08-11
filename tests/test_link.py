@@ -133,7 +133,7 @@ result: .word 99
             main.write_text(
                 """\
 .include <subroutine.s>
-jmp main
+.bootstrap
 
 double:
     rts
@@ -195,9 +195,7 @@ stack_ptr: .word stack
             main.write_text(
                 """\
 .include <subroutine.s>
-jmp main
-IO:      .word 0
-INSPECT: .word 0
+.bootstrap
 .include <print.s>
 
 main:

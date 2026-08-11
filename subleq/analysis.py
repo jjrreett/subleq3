@@ -45,6 +45,10 @@ DIRECTIVE_DOCS = {
     ".set": "Set a global memory cell before an embedded test runs.",
     ".assert": "Assert a global memory cell's value after the program halts.",
     ".assert-output": "Assert the exact bytes written to the I/O cell.",
+    ".bootstrap": (
+        "Emit the address-zero jump to `main` and define `IO` and `INSPECT` "
+        "at addresses 3 and 4."
+    ),
 }
 
 SUBLEQ_DOC = "Subtract `memory[a]` from `memory[b]`, then branch to `target` when the signed result is less than or equal to zero."

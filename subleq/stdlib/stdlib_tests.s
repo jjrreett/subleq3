@@ -8,10 +8,8 @@
 .include <math.s>
 
 .test "core/add and copy"
-    jmp start
-IO:      .word 0
-INSPECT: .word 0
-start:
+    .bootstrap
+main:
     cpy left, result
     add right, result
     jmp halt
@@ -26,10 +24,8 @@ result: .word 0
 .endt
 
 .test "math/double dabble add three"
-    jmp start
-IO:      .word 0
-INSPECT: .word 0
-start:
+    .bootstrap
+main:
     double_dabble_add_3 low_digit
     double_dabble_add_3 high_digit
     jmp halt
@@ -44,10 +40,8 @@ high_digit: .word 5
 .endt
 
 .test "memory/non-destructive read"
-    jmp start
-IO:      .word 0
-INSPECT: .word 0
-start:
+    .bootstrap
+main:
     read_word pointer, destination
     jmp halt
 halt:
@@ -61,9 +55,7 @@ destination: .word 0
 .endt
 
 .test "subroutine/stack round trip"
-    jmp main
-IO:      .word 0
-INSPECT: .word 0
+    .bootstrap
 double:
     rts
     pop argument
@@ -89,10 +81,8 @@ stack_ptr: .word stack
 .endt
 
 .test "io/string and newline"
-    jmp start
-IO:      .word 0
-INSPECT: .word 0
-start:
+    .bootstrap
+main:
     print_asciiz message
     newline
     jmp halt
@@ -105,9 +95,7 @@ message: .asciiz "OK"
 .endt
 
 .test "print/binary and decimal"
-    jmp main
-IO:      .word 0
-INSPECT: .word 0
+    .bootstrap
     .include <print.s>
 main:
     psh value

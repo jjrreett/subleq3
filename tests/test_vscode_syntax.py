@@ -58,7 +58,14 @@ class TextMateGrammarTests(unittest.TestCase):
     def test_embedded_test_keywords_are_directives(self) -> None:
         pattern = self.grammar["repository"]["directives"]["patterns"][0]["match"]
 
-        for directive in (".test", ".set", ".assert", ".assert-output", ".endt"):
+        for directive in (
+            ".bootstrap",
+            ".test",
+            ".set",
+            ".assert",
+            ".assert-output",
+            ".endt",
+        ):
             with self.subTest(directive=directive):
                 self.assertIsNotNone(re.search(pattern, directive))
 

@@ -91,7 +91,11 @@ class _LiteralPool:
     capacity: int
 
 
-_InstructionToken = str | int | _Next | _Label | _Literal | _LiteralPool
+@dataclass(frozen=True)
+class _Bootstrap: ...
+
+
+_InstructionToken = str | int | _Next | _Label | _Literal | _LiteralPool | _Bootstrap
 
 
 @dataclass
@@ -142,7 +146,8 @@ class _Macro:
         ]
         for instr in instructions:
             if not isinstance(
-                instr, (str, _Next, int, _Label, _Literal, _LiteralPool)
+                instr,
+                (str, _Next, int, _Label, _Literal, _LiteralPool, _Bootstrap),
             ):
                 msg = f"Unsupported instruction token: {instr!r}"
                 raise TypeError(msg)
@@ -271,6 +276,9 @@ class _SubleqTransformer(Transformer):
     def literal_pool(self, items) -> _LiteralPool:
         (capacity,) = items
         return _LiteralPool(capacity)
+
+    def bootstrap(self, items) -> _Bootstrap:  # noqa: ARG002
+        return _Bootstrap()
 
     def string(self, items):
         (token,) = items
@@ -424,6 +432,24 @@ def subleq_compile(
             raise error.orig_exc from error
         raise
     debug(instructions)
+
+    expanded_instructions: list[_InstructionToken] = []
+    emitted_words = 0
+    for instruction in instructions:
+        if isinstance(instruction, _Bootstrap):
+            if emitted_words != 0:
+                raise CompilationError("The .bootstrap directive must emit at address 0")
+            expanded_instructions.extend(
+                [5, 5, "main", _Label("IO"), 0, _Label("INSPECT"), 0, 0]
+            )
+            emitted_words += 6
+            continue
+        expanded_instructions.append(instruction)
+        if isinstance(instruction, _LiteralPool):
+            emitted_words += instruction.capacity
+        elif not isinstance(instruction, _Label):
+            emitted_words += 1
+    instructions = expanded_instructions
 
     literal_values = list(
         dict.fromkeys(

@@ -32,10 +32,8 @@ PROGRAM = """\
     clr destination
     add source, destination
 .endm
-jmp start
-IO:      .word 0
-INSPECT: .word 0
-start:
+.bootstrap
+main:
     cpy input, result
     add increment, result
     jmp halt
@@ -87,10 +85,8 @@ fixture_only: .word 99
     def test_fixture_can_define_a_complete_program_and_assert_output(self) -> None:
         source = """\
 .test "prints A"
-    subleq zero, zero, start
-IO:        .word 0
-INSPECT:   .word 0
-start:
+    .bootstrap
+main:
     subleq character, IO, halt
 halt:
     subleq zero, zero, 0
@@ -112,10 +108,8 @@ zero:      .word 0
 """
         looping = """\
 .test loop
-    subleq zero, zero, start
-IO:      .word 0
-INSPECT: .word 0
-start:   subleq zero, zero, start
+    .bootstrap
+main:    subleq zero, zero, main
 zero:    .word 0
 .endt
 """
