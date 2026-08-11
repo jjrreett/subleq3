@@ -31,6 +31,9 @@ code --install-extension ../../dist/subleq-language-support.vsix
 
 Reload VS Code after installation. This repository's `.vscode/settings.json`
 maps `*.s` to `subleq`; the extension itself only claims `.subleq` globally.
+Macro blocks receive contextual highlighting, and both global and private
+label definitions use a theme-recognized definition scope. Canonical private
+labels begin with `@`.
 
 Use **SUBLEQ: Restart Language Server** from the command palette after changing
 the server command or arguments. Protocol logs are available in the

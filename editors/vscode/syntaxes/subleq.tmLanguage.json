@@ -55,26 +55,67 @@
     "macroDefinitions": {
       "patterns": [
         {
-          "match": "^(\\s*)(\\.macro)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
-          "captures": {
+          "begin": "^(\\s*)(\\.macro)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(?=\\s|,|$)",
+          "beginCaptures": {
             "2": {
               "name": "keyword.control.directive.macro.subleq"
             },
             "4": {
               "name": "entity.name.function.macro.subleq"
             }
-          }
+          },
+          "end": "^(\\s*)(\\.endm)\\b",
+          "endCaptures": {
+            "2": {
+              "name": "keyword.control.directive.macro.subleq"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#macroLabels"
+            },
+            {
+              "include": "#directives"
+            },
+            {
+              "include": "#instructions"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#specialValues"
+            }
+          ]
+        }
+      ]
+    },
+    "macroLabels": {
+      "patterns": [
+        {
+          "name": "entity.name.function.label.local.subleq",
+          "match": "@?[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+        },
+        {
+          "name": "variable.other.label.local.subleq",
+          "match": "@[A-Za-z_][A-Za-z0-9_]*"
         }
       ]
     },
     "labels": {
       "patterns": [
         {
-          "name": "entity.name.label.local.subleq",
+          "name": "entity.name.function.label.local.subleq",
           "match": "@[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
         },
         {
-          "name": "entity.name.label.global.subleq",
+          "name": "entity.name.function.label.global.subleq",
           "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
         },
         {
