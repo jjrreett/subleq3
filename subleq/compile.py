@@ -15,6 +15,7 @@ import numpy as np
 from rich import print  # noqa: A004
 
 from .analysis import DocumentAnalysis
+from .harness import HarnessSyntaxError, strip_test_harness
 from .link import link_sources
 from .subleq import Lark_StandAlone, Transformer, VisitError
 
@@ -403,6 +404,10 @@ def subleq_compile(
     warning_handler: Callable[[str], None] | None = None,
 ) -> tuple[np.ndarray, dict[str, int]]:
     """Compile subleq assembly into image in the format of np.ndarray."""
+    try:
+        source = strip_test_harness(source)
+    except HarnessSyntaxError as error:
+        raise CompilationError(str(error)) from error
     parser = Lark_StandAlone(propagate_positions=True)
     tree = parser.parse(source)
     debug(tree)

@@ -25,7 +25,7 @@ class CommandLineTests(unittest.TestCase):
             cli.main(["--help"])
 
         self.assertEqual(raised.exception.code, 0)
-        for command in ("compile", "run", "emulate", "gen-grammar", "lsp"):
+        for command in ("compile", "run", "test", "emulate", "gen-grammar", "lsp"):
             self.assertIn(command, output.getvalue())
 
     def test_compile_and_emulate_subcommands(self) -> None:

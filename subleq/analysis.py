@@ -11,6 +11,8 @@ LABEL_RE = re.compile(rf"\s*(?P<name>@?{IDENT})\s*:")
 MACRO_RE = re.compile(r"\s*\.macro\s+(?P<signature>[^;]+?)\s*$")
 END_MACRO_RE = re.compile(r"\s*\.endm\s*$")
 INSTRUCTION_RE = re.compile(rf"\s*(?P<name>{IDENT})(?P<arguments>.*)$")
+TEST_RE = re.compile(r'\s*\.test\s+(?:"[^"]*"|' + IDENT + r")\s*$")
+END_TEST_RE = re.compile(r"\s*\.endt\s*$")
 
 
 DIRECTIVE_DOCS = {
@@ -36,6 +38,11 @@ DIRECTIVE_DOCS = {
         "Emit one word for every unique `#number` immediate used by the program. "
         "Immediate operands are rewritten to the corresponding word addresses."
     ),
+    ".test": "Begin an embedded source test. End it with `.endt`.",
+    ".endt": "End an embedded source test.",
+    ".set": "Set a global memory cell before an embedded test runs.",
+    ".assert": "Assert a global memory cell's value after the program halts.",
+    ".assert-output": "Assert the exact bytes written to the I/O cell.",
 }
 
 SUBLEQ_DOC = "Subtract `memory[a]` from `memory[b]`, then branch to `target` when the signed result is less than or equal to zero."
@@ -150,11 +157,26 @@ class DocumentAnalysis:
         current_global = "<start of file>"
         current_macro: str | None = None
         in_data = False
+        in_test = False
         pending_comments: list[str] = []
 
         for line_number, source_line in enumerate(self.lines):
             code, comment = split_comment(source_line)
             stripped = code.strip()
+
+            if current_macro is None and TEST_RE.fullmatch(code):
+                in_test = True
+                self.scope_by_line.append(current_global)
+                self.macro_by_line.append(None)
+                pending_comments.clear()
+                continue
+            if in_test:
+                self.scope_by_line.append(current_global)
+                self.macro_by_line.append(None)
+                if END_TEST_RE.fullmatch(code):
+                    in_test = False
+                pending_comments.clear()
+                continue
 
             if not stripped:
                 self.scope_by_line.append(

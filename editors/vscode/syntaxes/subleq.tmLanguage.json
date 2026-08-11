@@ -128,7 +128,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.subleq",
-          "match": "\\.(?:include|data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res|literals)\\b"
+          "match": "\\.(?:include|data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res|literals|test|endt|set|assert|assert-output)\\b"
         }
       ]
     },

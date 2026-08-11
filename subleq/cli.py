@@ -10,6 +10,7 @@ from . import compile as compiler
 from . import gen_grammar
 from . import lsp
 from . import run as emulator
+from . import testing
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,6 +39,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Compile SUBLEQ assembly source and run it immediately",
     )
     emulator.configure_source_parser(run_parser)
+
+    test_parser = subcommands.add_parser(
+        "test",
+        help="Run test harnesses embedded in assembly source",
+        description="Compile and run test harnesses embedded in SUBLEQ source",
+    )
+    testing.configure_parser(test_parser)
 
     emulate_parser = subcommands.add_parser(
         "emulate",

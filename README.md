@@ -349,6 +349,34 @@ or calling semantics beyond what labels and macros already express. Adding
 such a construct would be the first real step toward a higher-level language,
 so function-like coloring is intentionally not inferred from label names.
 
+## Embedded source tests
+
+Quick executable tests can live beside the assembly they exercise. Normal
+`compile` and `run` builds remove every `.test` block, so fixtures never add
+words or labels to production images. Run the cases with:
+
+```powershell
+uv run subleq test path/to/program.s
+```
+
+A test can reuse the surrounding program, set global cells before execution,
+and inspect them after the program halts:
+
+```asm
+.test "increments 41"
+    .set input, 41
+    .assert result, 42
+.endt
+```
+
+Each case starts from a newly compiled memory image. Values accept the same
+decimal, `$hex`, `%binary`, and negative forms as assembly data, or a global
+label when an address is expected. A test block may instead contain a complete
+program; this is useful for macro-only libraries whose normal source emits no
+words. `.assert-output "text"` checks the exact bytes written to the
+memory-mapped I/O cell. Tests fail safely when they do not halt within one
+million instructions; override that guard with `--max-instructions`.
+
 ## Building and running
 
 The project requires Python 3.12 or newer and uses `uv` for its environment.
@@ -394,7 +422,7 @@ subleq compile programs/program/program.s -l
 subleq emulate programs/program/program.npy -l
 ```
 
-The other subcommands are `subleq gen-grammar` and `subleq lsp`. Run
+The other subcommands are `subleq test`, `subleq gen-grammar`, and `subleq lsp`. Run
 `subleq --help` or `subleq <command> --help` for the complete options.
 
 ## Language server

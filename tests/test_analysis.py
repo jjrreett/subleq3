@@ -114,6 +114,26 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(len(analysis.diagnostics), 1)
         self.assertIn("Unknown opcode or macro", analysis.diagnostics[0].message)
 
+    def test_embedded_test_fixtures_do_not_pollute_production_symbols(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            """\
+main: .word 0
+.test "first"
+fixture: .word 1
+.endt
+.test "second"
+fixture: .word 2
+.endt
+"""
+        )
+
+        self.assertEqual(analysis.diagnostics, [])
+        self.assertEqual(set(analysis.global_labels), {"main"})
+        hover = analysis.hover_at(1, 2)
+        self.assertIsNotNone(hover)
+        assert hover is not None
+        self.assertIn("embedded source test", hover.markdown)
+
     def test_recursive_macro_has_no_misleading_size(self) -> None:
         analysis = DocumentAnalysis.parse(
             ".macro forever\n    forever\n.endm\nmain:\n    forever\n"

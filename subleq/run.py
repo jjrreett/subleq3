@@ -6,7 +6,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import wraps
 from pathlib import Path
 
@@ -16,6 +16,10 @@ from . import const
 from .compile import print_compile_warning, subleq_compile_files
 
 DEBUG = True
+
+
+class ExecutionLimitError(Exception):
+    """A program did not halt within its configured instruction limit."""
 
 
 @wraps(print)
@@ -56,7 +60,13 @@ def debug_instruction(pc, data, rlabels):
     debug("-" * 50)
 
 
-def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
+def subleq(
+    data: np.ndarray,
+    labels: dict[str, int],
+    *,
+    max_instructions: int | None = None,
+    output_handler: Callable[[bytes], None] | None = None,
+) -> int:
     """Emulate a subleq computer on a bank of data."""
     count = 0
 
@@ -70,6 +80,10 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
 
     pc = np.uint16(0)
     while True:
+        if max_instructions is not None and count >= max_instructions:
+            raise ExecutionLimitError(
+                f"program did not halt within {max_instructions} instructions"
+            )
         count += 1
         debug_instruction(pc, data, rlabels)
         a, b, c = (
@@ -84,7 +98,11 @@ def subleq(data: np.ndarray, labels: dict[str, int]) -> int:
             da = (-eval(input())) % (1 << 16)  # noqa: S307
 
         if b == const.IO_ADDR:
-            os.write(1, bytes([da]))
+            emitted = bytes([da])
+            if output_handler is None:
+                os.write(1, emitted)
+            else:
+                output_handler(emitted)
 
         elif b == const.INSPECT_ADDR:
             print(f" < {da:5d}, {np.uint16(da):6x}, {np.uint16(da):16b}")
