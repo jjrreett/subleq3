@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from .harness import HarnessSyntaxError, parse_test_harness
+
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 TOKEN_RE = re.compile(rf"@?{IDENT}|\.[A-Za-z_][A-Za-z0-9_]*")
 LABEL_RE = re.compile(rf"\s*(?P<name>@?{IDENT})\s*:")
@@ -129,6 +131,7 @@ class DocumentAnalysis:
     macro_by_line: list[str | None] = field(default_factory=list)
     uri: str | None = None
     external_macro_names: set[str] = field(default_factory=set)
+    test_analysis_by_line: dict[int, DocumentAnalysis] = field(default_factory=dict)
 
     @classmethod
     def parse(
@@ -140,6 +143,49 @@ class DocumentAnalysis:
         external_global_labels: dict[str, Symbol] | None = None,
     ) -> DocumentAnalysis:
         """Analyze source without requiring it to be complete or compilable."""
+        try:
+            harness = parse_test_harness(text)
+        except HarnessSyntaxError:
+            return cls._parse_plain(
+                text,
+                uri=uri,
+                external_macros=external_macros,
+                external_global_labels=external_global_labels,
+            )
+
+        analysis = cls._parse_plain(
+            harness.production_source,
+            uri=uri,
+            external_macros=external_macros,
+            external_global_labels=external_global_labels,
+        )
+        analysis.text = text
+        analysis.lines = text.splitlines()
+        for test in harness.tests:
+            test_source = "\n" * test.line + test.body
+            test_analysis = cls._parse_plain(
+                test_source,
+                uri=uri,
+                external_macros=analysis.macros,
+                external_global_labels=analysis.global_labels,
+            )
+            first_body_line = test.line
+            last_body_line = test.line + len(test.body.splitlines())
+            for line in range(first_body_line, last_body_line):
+                analysis.test_analysis_by_line[line] = test_analysis
+            analysis.diagnostics.extend(test_analysis.diagnostics)
+        return analysis
+
+    @classmethod
+    def _parse_plain(
+        cls,
+        text: str,
+        *,
+        uri: str | None = None,
+        external_macros: dict[str, Symbol] | None = None,
+        external_global_labels: dict[str, Symbol] | None = None,
+    ) -> DocumentAnalysis:
+        """Analyze one program without interpreting embedded test blocks."""
         macros = dict(external_macros or {})
         analysis = cls(
             text=text,
@@ -446,6 +492,10 @@ class DocumentAnalysis:
         if token.startswith(".") or token == "subleq":
             return None
 
+        test_analysis = self.test_analysis_by_line.get(line)
+        if test_analysis is not None:
+            return test_analysis.definition_at(line, character)
+
         invocation = self._invocation_at(line, character)
         if invocation and invocation.name in self.macros:
             return self.macros[invocation.name]
@@ -480,6 +530,10 @@ class DocumentAnalysis:
             return HoverResult(token_span, markdown)
         if token in DIRECTIVE_DOCS:
             return HoverResult(token_span, f"**`{token}`**\n\n{DIRECTIVE_DOCS[token]}")
+
+        test_analysis = self.test_analysis_by_line.get(line)
+        if test_analysis is not None:
+            return test_analysis.hover_at(line, character)
 
         symbol = self.definition_at(line, character)
         if symbol is None:
@@ -533,6 +587,13 @@ class DocumentAnalysis:
                     f"Expands to {macro.instruction_count} native SUBLEQ {noun}.",
                 )
             )
+        child_analyses = {
+            id(analysis): analysis
+            for line, analysis in self.test_analysis_by_line.items()
+            if start_line <= line <= end_line
+        }
+        for analysis in child_analyses.values():
+            hints.extend(analysis.inlay_hints(start_line, end_line))
         return hints
 
     def _invocation_at(self, line: int, character: int) -> Invocation | None:

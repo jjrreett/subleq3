@@ -134,6 +134,43 @@ fixture: .word 2
         assert hover is not None
         self.assertIn("embedded source test", hover.markdown)
 
+    def test_each_embedded_test_is_analyzed_as_an_independent_program(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            """\
+.macro double value
+    subleq value, value, ?
+    subleq value, value, ?
+.endm
+.test "first"
+main: .word 1
+    double main
+.endt
+.test "second"
+main: .word 2
+    double main
+.endt
+"""
+        )
+
+        self.assertEqual(analysis.diagnostics, [])
+        definition = analysis.definition_at(10, 7)
+        self.assertIsNotNone(definition)
+        assert definition is not None
+        self.assertEqual(definition.name, "double")
+        self.assertEqual(
+            [hint.label for hint in analysis.inlay_hints()],
+            [": 2 instructions", ": 2 instructions"],
+        )
+
+    def test_embedded_test_diagnostics_keep_their_source_line(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            '.test "broken"\nmain:\n    missing main\n.endt\n'
+        )
+
+        self.assertEqual(len(analysis.diagnostics), 1)
+        self.assertEqual(analysis.diagnostics[0].span.line, 2)
+        self.assertIn("Unknown opcode", analysis.diagnostics[0].message)
+
     def test_recursive_macro_has_no_misleading_size(self) -> None:
         analysis = DocumentAnalysis.parse(
             ".macro forever\n    forever\n.endm\nmain:\n    forever\n"
