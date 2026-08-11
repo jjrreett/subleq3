@@ -79,3 +79,55 @@
     .endd
 @return:
 .endm
+
+; `double_dabble_add_3 digit`
+;
+; Apply the add-three step used by double-dabble binary-to-decimal conversion.
+; Changes: `digit`. Uses `z` (restored) and private scratch.
+.macro double_dabble_add_3 digit
+    cpy digit, @temporary
+    subleq #4, @temporary, @return
+    add #3, digit
+    jmp @return
+
+    .data @temporary: 0 .endd
+@return:
+.endm
+
+; `nibble_lslo input, output`
+;
+; Shift a four-bit value left, carrying overflow into `output`.
+; Changes: both operands. Uses `z` (restored) and private scratch.
+.macro nibble_lslo input, output
+    dbl input
+    cpy input, @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    dbl @temporary
+    bpl @temporary, @return
+    inc output
+    sub #16, input
+    jmp @return
+
+    .data @temporary: 0 .endd
+@return:
+.endm
+
+; `lslo input, output`
+;
+; Shift a 16-bit value left, carrying its most-significant bit into `output`.
+; Changes: both operands.
+.macro lslo input, output
+    bpl input, @shift
+    inc output
+@shift:
+    dbl input
+.endm

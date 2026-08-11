@@ -3,89 +3,31 @@
 .include <math.s>
 
 ;;;;;;; b = b * a ;;;;;;;;; WIP
-.macro fmul a, b
-@while:
+.macro fmul, a, b
+    @while:
         bleq b, @return           ; if b <= 0: return
         cpy b, @temporary
         lsl #15, @temporary
         bpl @temporary, @shift          ; if b & 1:
         add a, @result           ;     result += a
         sub @result, IO
-@shift:
+    @shift:
         dbl a           ; double a
-        lsr p1, b   ; halve b
+        lsr #1, b   ; halve b
         jmp @while
 
-    .data @result: 0 @temporary: 0 .endd
-@return:
+    .data
+        @result: 0
+        @temporary: 0
+    .endd
+
+    @return:
         cpy @result, b
 
 .endm
 
 
 
-
-;;;;;;;; 4 bit shift, inc output if overflow ;;;;;;;;
-.macro nibble_lslo input, output
-        dbl input
-        cpy input, tmp
-        dbl tmp
-        dbl tmp
-        dbl tmp
-
-        dbl tmp
-        dbl tmp
-        dbl tmp
-        dbl tmp
-
-        dbl tmp
-        dbl tmp
-        dbl tmp
-        dbl tmp
-        
-        bpl tmp, @no_overflow
-        inc output
-        sub #16, input
-@no_overflow:
-.endm
-
-;;;;;;;; 8 bit shift, inc output if overflow ;;;;;;;;
-.macro byte_lslo input, output
-        dbl input
-        cpy input, tmp
-        dbl tmp
-        dbl tmp
-        dbl tmp
-
-        dbl tmp
-        dbl tmp
-        dbl tmp
-        dbl tmp
-
-        bpl tmp, @return
-        inc @no_overflow
-        sub #256, input
-@no_overflow:
-@return:
-.endm
-
-;;;;;;;; 16 bit shift, inc output if overflow ;;;;;;;;
-.macro lslo input, output
-        bpl input, @no_overflow
-        inc output             ; inc output if overflow, always shift input
-@no_overflow:
-        dbl input
-.endm
-
-
-.macro double_dabble_add_3 x
-    cpy x, @temporary
-    subleq #4, @temporary, @return      ; if x ≤ 4, skip
-    add #3, x                  ; else x += 3
-    jmp @return
-    .data @temporary: 0 .endd
-@return:
-.endm
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
@@ -99,107 +41,19 @@ YR:         .word $00       ; y register
 SP:         .word $00       ; stack pointer
 SR:         .fill 146, $00  ; stack register
 
-func_print_bin:
-    rts
-    pop @a
-    cpy #16, @counter
-@check_msb:
-    bmi @a, @print_1
+.include <print.s>
 
-@print_0:
-    sub #48, IO
-    jmp @shift
-
-@print_1:
-    sub #49, IO
-
-@shift:
-    subleq p1, @counter, @return
-    dbl @a
-    jmp @check_msb
-
-@return:
-    newline
-    jmp func_print_bin
-
-.data
-    @a: 0
-    @counter: 0
-.endd
-
-
-
-func_print_dec:
-    rts
-    pop @input
-    psh a
-    psh counter
-    clr ones
-    clr tens
-    clr hund
-    clr thou
-    clr tthou
-    cpy #16, counter
-
-@shift:
-    double_dabble_add_3 thou
-    double_dabble_add_3 hund
-    double_dabble_add_3 tens
-    double_dabble_add_3 ones
-
-    dbl tthou
-    nibble_lslo thou, tthou
-    nibble_lslo hund, thou
-    nibble_lslo tens, hund
-    nibble_lslo ones, tens
-    lslo input, ones
-
-    subleq p1, counter, @cleanup
-    jmp @shift
-
-
-@cleanup:
-    cpy #48, a
-    add tthou, a
-    sub a, IO
-    cpy #48, a
-    add thou, a
-    sub a, IO
-    cpy #48, a
-    add hund, a
-    sub a, IO
-    cpy #48, a
-    add tens, a
-    sub a, IO
-    cpy #48, a
-    add ones, a
-    sub a, IO
-    newline
-
-    pop a
-    pop counter
-    jmp func_print_dec
-
-
-.data
-    @input: 0
-    ones: 0
-    tens: 0
-    hund: 0
-    thou: 0
-    tthou: 0
-.endd
 boot:
-    print_asciiz boot_prompt
-    jmp test
+        print_asciiz boot_prompt
+        jmp test
 
 test:    
-    print_asciiz input_prompt
-    clr input
-    sub IO, input
-    psh input
-    jsr func_print_dec
-    jmp test
+        print_asciiz input_prompt
+        clr input
+        sub IO, input
+        psh input
+        jsr func_print_dec
+        jmp test
 
 
 
@@ -210,7 +64,7 @@ c:          .word 0
 d:          .word 0
 input:      .word 0
 stack:      .res 256
-stack_ptr:  .data stack .endd
+stack_ptr:  .word stack
 z:          .word 0
 p1:         .word 1
 m1:         .word -1

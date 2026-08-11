@@ -2,6 +2,7 @@
 
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -190,6 +191,48 @@ stack_ptr: .word stack
             data, _ = subleq_compile_files([main])
 
             np.testing.assert_array_equal(data, np.array([0], dtype=np.uint16))
+
+    def test_integer_print_subroutines_compile_and_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            main = Path(directory) / "main.s"
+            main.write_text(
+                """\
+.include <subroutine.s>
+jmp main
+IO:      .word 0
+INSPECT: .word 0
+.include <print.s>
+
+main:
+    psh value
+    jsr func_print_bin
+    psh value
+    jsr func_print_dec
+    jmp halt
+halt:
+    subleq z, z, 0
+
+z:         .word 0
+p1:        .word 1
+m1:        .word -1
+value:     .word 42
+stack:     .res 16
+stack_ptr: .word stack
+.literals
+"""
+            )
+
+            data, labels = subleq_compile_files([main])
+            previous_debug = run.DEBUG
+            run.DEBUG = False
+            try:
+                with mock.patch.object(run.os, "write") as write_output:
+                    run.subleq(data.copy(), labels)
+            finally:
+                run.DEBUG = previous_debug
+
+            output = b"".join(call.args[1] for call in write_output.call_args_list)
+            self.assertEqual(output, b"0000000000101010\n\r00042\n\r")
 
 
 if __name__ == "__main__":

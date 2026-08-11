@@ -144,3 +144,18 @@ immediates require the program's `.literals` pool.
 | `mul source, destination` | Multiply by repeated addition | both operands, private scratch, `z` restored |
 | `lsl count, value` | Shift `value` left by `count` bits | `value`, private counter, `z` restored |
 | `lsr source, value` | Shift `value` right with a working bit accumulator | both operands, private scratch, `z` restored |
+| `double_dabble_add_3 digit` | Apply double-dabble's add-three step | `digit`, private scratch, `z` restored |
+| `nibble_lslo input, output` | Shift a nibble left and carry into `output` | both operands, private scratch, `z` restored |
+| `lslo input, output` | Shift a 16-bit word left and carry into `output` | both operands |
+
+## `print.s`
+
+Callable integer-output routines. Unlike the macro-only modules, this module
+emits executable words and must be included after the reset jump and fixed
+`IO`/`INSPECT` cells. It imports `subroutine.s`, `io.s`, and `math.s`, requires
+their ABI cells and stack, and expects one program-level `.literals` pool.
+
+| Subroutine | Effect | Stack effect |
+| --- | --- | --- |
+| `func_print_bin` | Print all 16 binary digits and a newline | consumes one argument |
+| `func_print_dec` | Print all five unsigned decimal digits and a newline | consumes one argument |

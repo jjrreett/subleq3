@@ -331,8 +331,9 @@ and transitively does not create duplicate macro definitions.
 
 Additional modules provide non-destructive indirect reads (`memory.s`),
 character and ASCIIZ output (`io.s`), and extended multiply/shift operations
-(`math.s`). The main sample imports these modules instead of defining reusable
-macros locally.
+(`math.s`). The emitted runtime module `print.s` provides callable binary and
+unsigned-decimal integer printers. The main sample imports these modules
+instead of defining reusable operations locally.
 
 The complete API reference—including signatures, required cells, effects,
 instruction counts, changed state, scratch usage, and the subroutine calling
