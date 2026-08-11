@@ -10,14 +10,18 @@
 ; The core ABI cells `z`, `p1`, and `m1` are also required. `stack_ptr` points
 ; to the next free stack word. The stack has no bounds checking.
 
-.include <core.s>
+.include <memory.s>
 
 ; `rpt pointer, destination`
 ;
-; Read the word addressed by `pointer` into `destination` using self-modifying
-; code. The pointer cell is not changed.
-; Clobbers: `destination`, `z` (restored), macro-private code words.
-.macro rpt, pointer, destination
+; **Destructive stack transfer.**
+;
+; Subtract the word addressed by `pointer` into `destination`, then clear that
+; addressed word. This is the inverse of `wpt` used by `pop`; for an ordinary
+; non-destructive indirect read, use `read_word` from `memory.s`.
+; Changes: `destination` and the addressed word. Uses `z` (restored) and
+; private code words as scratch.
+.macro rpt pointer, destination
     clr @code_a
     clr @code_a0
     clr @code_a1
@@ -43,8 +47,8 @@
 ;
 ; Write the value in `source` to the address stored in `pointer` using
 ; self-modifying code. Neither input cell is changed.
-; Clobbers: macro-private code words.
-.macro wpt, source, pointer
+; Changes: the addressed word. Uses private code words as scratch.
+.macro wpt source, pointer
     cpy pointer, @code_b
     jmp @code_a
 
@@ -58,8 +62,8 @@
 ; `psh source`
 ;
 ; Push the value in `source`, then advance `stack_ptr`.
-; Clobbers: the next stack word, `stack_ptr`, macro-private code words.
-.macro psh, source
+; Changes: `stack_ptr` and the next stack word. Uses private code as scratch.
+.macro psh source
     wpt source, stack_ptr
     inc stack_ptr
 .endm
@@ -67,8 +71,9 @@
 ; `pop destination`
 ;
 ; Retreat `stack_ptr`, then pop into `destination`.
-; Clobbers: `destination`, `stack_ptr`, macro-private code words.
-.macro pop, destination
+; Changes: `destination`, `stack_ptr`, and the popped stack word. Uses private
+; code as scratch.
+.macro pop destination
     dec stack_ptr
     rpt stack_ptr, destination
 .endm
@@ -77,8 +82,8 @@
 ;
 ; Push the return address and jump to `target`. Arguments and return values are
 ; passed explicitly on the data stack with `psh` and `pop`.
-; Clobbers: `stack_ptr`, the next stack word, macro-private code words.
-.macro jsr, target
+; Changes: `stack_ptr` and the next stack word. Uses private code as scratch.
+.macro jsr target
     wpt @return_address, stack_ptr
     inc stack_ptr
     jmp target
@@ -90,7 +95,7 @@
 ; Two-phase subroutine return. Place this at a function's entry point and jump
 ; back to that entry after the function body. The first pass captures the
 ; caller's return address; the second pass jumps to it.
-; Clobbers: `stack_ptr`, macro-private state and code words.
+; Changes: `stack_ptr`. Uses private state and code words as scratch.
 .macro rts
     bleq @second_pass, @setup
     clr @second_pass

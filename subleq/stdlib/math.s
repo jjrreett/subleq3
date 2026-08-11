@@ -8,8 +8,8 @@
 ; `mul source, destination`
 ;
 ; Multiply `destination` by `source` using repeated addition.
-; Clobbers: `source`, `destination`, `z` (restored), macro-private scratch.
-.macro mul, source, destination
+; Changes: `source` and `destination`. Uses `z` (restored) and private scratch.
+.macro mul source, destination
     inc source
 @loop:
     subleq p1, source, @break
@@ -27,8 +27,8 @@
 ; `lsl count, value`
 ;
 ; Shift `value` left by `count` bits.
-; Clobbers: `value`, `z` (restored), macro-private counter.
-.macro lsl, count, value
+; Changes: `value`. Uses `z` (restored) and a private counter.
+.macro lsl count, value
     cpy count, @counter
     inc @counter
 @loop:
@@ -43,8 +43,8 @@
 ; `lsr source, value`
 ;
 ; Shift `value` right using `source` as the working bit accumulator.
-; Clobbers: both operands, `z` (restored), macro-private scratch.
-.macro lsr, source, value
+; Changes: both operands. Uses `z` (restored) and private scratch.
+.macro lsr source, value
     add #16, @count
     sub value, @count
     inc @count

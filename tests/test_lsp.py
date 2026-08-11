@@ -8,7 +8,7 @@ import unittest
 
 SOURCE = """\
 ; Jump unconditionally.
-.macro jmp, target
+.macro jmp target
     subleq zero, zero, target
 .endm
 

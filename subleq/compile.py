@@ -188,8 +188,8 @@ class _SubleqTransformer(Transformer):
     def args(self, items) -> list[_InstructionToken]:
         return list(items)
 
-    def macro_args(self, items) -> Iterable[str]:  # noqa: ANN001
-        return items
+    def macro_signature(self, items) -> list[str]:  # noqa: ANN001
+        return list(items)
 
     def label_def(self, items) -> _Label:  # noqa: ANN001
         name = items[0]

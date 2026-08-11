@@ -11,7 +11,7 @@
 ; `newline`
 ;
 ; Write line-feed and carriage-return characters to `IO`.
-; Clobbers: `IO` device side effects only.
+; Changes: writes two characters to the `IO` device.
 .macro newline
     sub #10, IO
     sub #13, IO
@@ -21,8 +21,8 @@
 ;
 ; Write a null-terminated string to `IO`. The pointer is reset each time the
 ; expansion executes, so a call site can run repeatedly.
-; Clobbers: `IO`, `z` (restored), macro-private pointer and character cells.
-.macro print_asciiz, string
+; Changes: writes characters to `IO`. Uses `z` (restored) and private cells.
+.macro print_asciiz string
     cpy @string_address, @pointer
 @next:
     read_word @pointer, @character

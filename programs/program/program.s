@@ -3,7 +3,7 @@
 .include <math.s>
 
 ;;;;;;; b = b * a ;;;;;;;;; WIP
-.macro fmul, a, b
+.macro fmul a, b
 @while:
         bleq b, @return           ; if b <= 0: return
         cpy b, @temporary
@@ -26,7 +26,7 @@
 
 
 ;;;;;;;; 4 bit shift, inc output if overflow ;;;;;;;;
-.macro nibble_lslo, input, output                
+.macro nibble_lslo input, output
         dbl input
         cpy input, tmp
         dbl tmp
@@ -50,7 +50,7 @@
 .endm
 
 ;;;;;;;; 8 bit shift, inc output if overflow ;;;;;;;;
-.macro byte_lslo, input, output
+.macro byte_lslo input, output
         dbl input
         cpy input, tmp
         dbl tmp
@@ -70,7 +70,7 @@
 .endm
 
 ;;;;;;;; 16 bit shift, inc output if overflow ;;;;;;;;
-.macro lslo, input, output
+.macro lslo input, output
         bpl input, @no_overflow
         inc output             ; inc output if overflow, always shift input
 @no_overflow:
@@ -78,7 +78,7 @@
 .endm
 
 
-.macro double_dabble_add_3, x
+.macro double_dabble_add_3 x
     cpy x, @temporary
     subleq #4, @temporary, @return      ; if x ≤ 4, skip
     add #3, x                  ; else x += 3
@@ -101,37 +101,37 @@ SR:         .fill 146, $00  ; stack register
 
 func_print_bin:
     rts
-    pop func_print_bin_a
-    cpy #16, func_print_bin_counter
-func_print_bin_check_msb:
-    bmi func_print_bin_a, func_print_bin_print_1
+    pop @a
+    cpy #16, @counter
+@check_msb:
+    bmi @a, @print_1
 
-func_print_bin_print_0:
+@print_0:
     sub #48, IO
-    jmp func_print_bin_shift
+    jmp @shift
 
-func_print_bin_print_1:
+@print_1:
     sub #49, IO
 
-func_print_bin_shift:
-    subleq p1, func_print_bin_counter, func_print_bin_return
-    dbl func_print_bin_a
-    jmp func_print_bin_check_msb
+@shift:
+    subleq p1, @counter, @return
+    dbl @a
+    jmp @check_msb
 
-func_print_bin_return:
+@return:
     newline
     jmp func_print_bin
 
 .data
-    func_print_bin_a: 0
-    func_print_bin_counter: 0
+    @a: 0
+    @counter: 0
 .endd
 
 
 
 func_print_dec:
     rts
-    pop func_print_dec_input
+    pop @input
     psh a
     psh counter
     clr ones
@@ -141,7 +141,7 @@ func_print_dec:
     clr tthou
     cpy #16, counter
 
-func_print_dec_shift:
+@shift:
     double_dabble_add_3 thou
     double_dabble_add_3 hund
     double_dabble_add_3 tens
@@ -154,11 +154,11 @@ func_print_dec_shift:
     nibble_lslo ones, tens
     lslo input, ones
 
-    subleq p1, counter, func_print_dec_cleanup
-    jmp func_print_dec_shift
+    subleq p1, counter, @cleanup
+    jmp @shift
 
 
-func_print_dec_cleanup:
+@cleanup:
     cpy #48, a
     add tthou, a
     sub a, IO
@@ -182,7 +182,7 @@ func_print_dec_cleanup:
 
 
 .data
-    func_print_dec_input: 0
+    @input: 0
     ones: 0
     tens: 0
     hund: 0

@@ -2,7 +2,7 @@
 
 The standard library is a collection of source modules imported with angle
 brackets. It favors explicit machine state and documents every macro in terms
-of its signature, effects, required cells, and clobbers.
+of its signature, effects, required cells, changed state, and restored scratch.
 
 ```asm
 .include <core.s>
@@ -35,7 +35,7 @@ Arithmetic and control-flow macros. Import directly with:
 .include <core.s>
 ```
 
-| Macro | Effect | Native instructions | Clobbers |
+| Macro | Effect | Native instructions | State changed |
 | --- | --- | ---: | --- |
 | `jmp target` | Unconditional jump | 1 | — |
 | `clr target` | `target = 0` | 1 | `target` |
@@ -71,9 +71,9 @@ stack_ptr: .word stack
 `stack_ptr` always addresses the next free word. The library performs no stack
 overflow or underflow checks.
 
-| Macro | Effect | Clobbers |
+| Macro | Effect | State changed |
 | --- | --- | --- |
-| `rpt pointer, destination` | Read `memory[memory[pointer]]` | `destination`, private code, `z` restored |
+| `rpt pointer, destination` | Subtract the addressed word into `destination`, then clear it; paired with `wpt` | addressed word, `destination`; private code and restored `z` as scratch |
 | `wpt source, pointer` | Write `memory[source]` to `memory[memory[pointer]]` | private code |
 | `psh source` | Push one word | `stack_ptr`, next stack word, private code |
 | `pop destination` | Pop one word | `destination`, `stack_ptr`, private code |
@@ -106,24 +106,30 @@ main:
 uses macro-private self-modifying code, making each expanded call site
 independent but not recursively reentrant.
 
+`rpt` is a short, low-level name retained for the stack implementation. It is
+destructive and paired with `wpt`; it is not the long spelling of `read_word`.
+Use `read_word` for a normal non-destructive indirect load. Both hovers state
+this distinction.
+
 ## `memory.s`
 
 Non-destructive indirect memory access. It imports `core.s` and uses the core
 `z` scratch cell.
 
-| Macro | Effect | Clobbers |
+| Macro | Effect | State changed |
 | --- | --- | --- |
 | `read_word pointer, destination` | Copy `memory[memory[pointer]]` without changing the source | `destination`, private code, `z` restored |
 
 Unlike the stack-oriented `rpt`, `read_word` leaves the addressed source word
-intact, making it suitable for traversing strings and tables.
+intact, making it suitable for traversing strings and tables. Importing
+`subroutine.s` also makes this macro available.
 
 ## `io.s`
 
 Character-output helpers. It imports `memory.s`, requires the fixed `IO` cell,
 and expects the program to place one `.literals` directive for newline values.
 
-| Macro | Effect | Clobbers |
+| Macro | Effect | State changed |
 | --- | --- | --- |
 | `newline` | Write line feed and carriage return to `IO` | device output only |
 | `print_asciiz string` | Write characters through the terminating zero | `IO`, private pointer/character cells, `z` restored |
@@ -133,7 +139,7 @@ and expects the program to place one `.literals` directive for newline values.
 Extended integer arithmetic. It imports `core.s`; shift macros that use
 immediates require the program's `.literals` pool.
 
-| Macro | Effect | Clobbers |
+| Macro | Effect | State changed |
 | --- | --- | --- |
 | `mul source, destination` | Multiply by repeated addition | both operands, private scratch, `z` restored |
 | `lsl count, value` | Shift `value` left by `count` bits | `value`, private counter, `z` restored |

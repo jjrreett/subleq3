@@ -9,6 +9,35 @@ from subleq import run
 from subleq.compile import CompilationError, macro_tradeoffs, subleq_compile
 
 
+class MacroDeclarationSyntaxTests(unittest.TestCase):
+    def test_name_is_separated_from_arguments_by_whitespace(self) -> None:
+        source = """\
+.macro stop target
+    subleq target, target, target
+.endm
+main:
+    stop main
+"""
+
+        data, labels = subleq_compile(source)
+
+        self.assertEqual(data.tolist(), [0, 0, 0])
+        self.assertEqual(labels, {"main": 0})
+
+    def test_comma_after_name_remains_compatible(self) -> None:
+        source = """\
+.macro stop, target
+    subleq target, target, target
+.endm
+main:
+    stop main
+"""
+
+        data, _ = subleq_compile(source)
+
+        self.assertEqual(data.tolist(), [0, 0, 0])
+
+
 class LocalLabelTests(unittest.TestCase):
     """Scoped labels should resolve without leaking between scopes or calls."""
 
@@ -60,7 +89,7 @@ root:
 
     def test_macro_argument_can_reference_callers_local_label(self) -> None:
         source = """\
-.macro branch, target
+.macro branch target
     subleq zero, zero, target
 .endm
 
@@ -74,7 +103,7 @@ root:
 
     def test_nested_macro_labels_stay_in_outer_call_scope(self) -> None:
         source = """\
-.macro inner, flag, target
+.macro inner flag, target
 @again:
     subleq flag, flag, target
 .endm
@@ -95,7 +124,7 @@ root:
 
     def test_word_accepts_symbols_local_labels_next_and_macro_arguments(self) -> None:
         source = """\
-.macro emit_pointer, target
+.macro emit_pointer target
 @slot: .word target
 .endm
 
@@ -124,7 +153,7 @@ root:
 
     def test_literal_pool_hoists_and_deduplicates_immediate_values(self) -> None:
         source = """\
-.macro subtract, source, destination
+.macro subtract source, destination
     subleq source, destination, ?
 .endm
 
@@ -219,13 +248,13 @@ class MacroTradeoffTests(unittest.TestCase):
     def test_repeated_large_macro_reports_space_and_cycle_tradeoff(self) -> None:
         body = "".join("    subleq z, z, ?\n" for _ in range(20))
         source = f"""\
-.macro psh, value
+.macro psh value
     subleq z, z, ?
 .endm
-.macro pop, value
+.macro pop value
     subleq z, z, ?
 .endm
-.macro jsr, target
+.macro jsr target
     subleq z, z, ?
 .endm
 .macro rts

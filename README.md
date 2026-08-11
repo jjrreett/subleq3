@@ -217,11 +217,11 @@ Macros provide the larger instruction vocabulary used by
 `programs/program/program.s`. Define one with `.macro` and `.endm`:
 
 ```asm
-.macro jmp, target
+.macro jmp target
     subleq zero, zero, target
 .endm
 
-.macro add, source, destination
+.macro add source, destination
     subleq source, zero, ?
     subleq zero, destination, ?
     subleq zero, zero, ?
@@ -237,7 +237,15 @@ jmp finished
 
 Arguments are substituted as assembler tokens. A macro must be defined before
 it is used, and each invocation must supply exactly the declared number of
-arguments. Macro bodies may invoke previously defined macros.
+arguments. Macro bodies may invoke previously defined macros. The macro name
+is separated from its first parameter by whitespace; commas separate
+parameters. The older `.macro name, first, second` spelling remains accepted
+for compatibility, but new source should use `.macro name first, second`.
+
+Every label defined inside a macro is private to that expansion. Prefixing
+macro-body labels with `@` is the canonical spelling because it makes that
+scope visible to a reader and to syntax highlighting; bare labels remain
+compatible and receive the same private compiler semantics.
 
 When compiling through the CLI, the compiler estimates whether a large,
 frequently expanded macro could occupy less space as a shared subroutine. A
@@ -279,6 +287,11 @@ macro definitions must appear before their use, and emitted words retain
 source order. Put a macro-only module first, or use `.include` exactly where
 its definitions should become available.
 
+A macro-only module behaves like a template library: importing it makes its
+definitions available but emits no words until a macro is invoked. It is not a
+C-style header—the macro bodies are still SUBLEQ source, are analyzed as code,
+and are expanded into each call site.
+
 Recursive includes are supported. Missing files and include cycles are
 reported as link errors with the including filename and line.
 
@@ -311,8 +324,8 @@ input: .word 7
 total: .word 0
 ```
 
-`subroutine.s` adds pointer reads and writes, an upward-growing data stack, and
-`jsr`/`rts`. It imports `core.s` transitively and requires `stack` plus a
+`subroutine.s` adds pointer transfers, an upward-growing data stack, and
+`jsr`/`rts`. It imports `memory.s` and `core.s` transitively and requires `stack` plus a
 `stack_ptr` cell. Standard modules are linked once, so importing both directly
 and transitively does not create duplicate macro definitions.
 
@@ -322,10 +335,18 @@ character and ASCIIZ output (`io.s`), and extended multiply/shift operations
 macros locally.
 
 The complete API reference—including signatures, required cells, effects,
-instruction counts, clobbers, and the subroutine calling convention—is in
+instruction counts, changed state, scratch usage, and the subroutine calling
+convention—is in
 [`subleq/stdlib/README.md`](subleq/stdlib/README.md). The same structured
 comments live directly above each macro definition, making them available in
 LSP hovers.
+
+A subroutine entry is currently an ordinary global label whose body follows
+the documented `rts` calling convention. The assembler does not yet have a
+separate function definition because it could not enforce parameter, return,
+or calling semantics beyond what labels and macros already express. Adding
+such a construct would be the first real step toward a higher-level language,
+so function-like coloring is intentionally not inferred from label names.
 
 ## Building and running
 
@@ -401,12 +422,13 @@ other assembly languages, so the editor-side file association should be
 limited to this project. A dedicated file extension can be introduced later.
 
 Any contiguous semicolon comments immediately above a macro or label become
-its hover documentation:
+its hover documentation. Comment line breaks, blank comment lines, and
+indentation after the conventional `; ` prefix are preserved:
 
 ```asm
 ; Add source to destination without modifying source.
 ; Expands to three native instructions.
-.macro add, source, destination
+.macro add source, destination
     subleq source, zero, ?
     subleq zero, destination, ?
     subleq zero, zero, ?

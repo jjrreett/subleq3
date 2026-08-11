@@ -18,7 +18,7 @@ class SourceLinkerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "library.s").write_text(
-                ".macro emit, value\n    .word value\n.endm\n"
+                ".macro emit value\n    .word value\n.endm\n"
                 "library_value: .word target\n"
             )
             main = root / "main.s"

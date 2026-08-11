@@ -26,7 +26,8 @@ local_label_def: "@" IDENT ":"
                 | literal_pool
 
 data: ".data" (local_label_def | label_def | value | _NEWLINE)* ".endd" _NEWLINE
-macro: ".macro" args _NEWLINE stmt+ ".endm" _NEWLINE
+macro: ".macro" macro_signature _NEWLINE stmt+ ".endm" _NEWLINE
+macro_signature: IDENT (","? IDENT ("," IDENT)*)?
 byte: ".byte"  NUMBER ("," NUMBER)* _NEWLINE
 word: ".word"  value ("," value)* _NEWLINE
 dword: ".dword"  NUMBER ("," NUMBER)* _NEWLINE

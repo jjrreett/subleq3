@@ -20,7 +20,10 @@ DIRECTIVE_DOCS = {
     ),
     ".data": "Begin a general data block. End it with `.endd`.",
     ".endd": "End a `.data` block.",
-    ".macro": "Define a macro. The first argument is its name.",
+    ".macro": (
+        "Define a macro with `.macro name parameter, ...`. The name is "
+        "separated from its parameters by whitespace."
+    ),
     ".endm": "End a macro definition.",
     ".byte": "Emit one word for each numeric byte value.",
     ".word": "Emit one 16-bit word for each numeric value.",
@@ -166,11 +169,7 @@ class DocumentAnalysis:
 
             macro_match = MACRO_RE.fullmatch(code)
             if current_macro is None and macro_match:
-                signature = tuple(
-                    part.strip()
-                    for part in macro_match.group("signature").split(",")
-                    if part.strip()
-                )
+                signature = parse_macro_signature(macro_match.group("signature"))
                 name = signature[0] if signature else ""
                 name_start = source_line.find(name)
                 span = Span(line_number, name_start, name_start + len(name))
@@ -465,10 +464,15 @@ class DocumentAnalysis:
             return None
         if symbol.kind == "macro":
             arguments = ", ".join(symbol.parameters)
-            signature = f"{symbol.name}{', ' if arguments else ''}{arguments}"
+            signature = f"{symbol.name}{' ' if arguments else ''}{arguments}"
             sections = [f"```subleq\n{signature}\n```"]
             if symbol.documentation:
-                sections.append(symbol.documentation)
+                sections.append(
+                    without_repeated_macro_signature(
+                        symbol.documentation,
+                        symbol.name,
+                    )
+                )
             if symbol.instruction_count is not None:
                 noun = (
                     "instruction" if symbol.instruction_count == 1 else "instructions"
@@ -544,13 +548,66 @@ def split_comment(line: str) -> tuple[str, str | None]:
 
 
 def clean_comment(comment: str) -> str:
-    """Turn an assembly comment into readable hover text."""
-    return comment.strip().strip(";").strip()
+    """Remove comment syntax while preserving intentional indentation."""
+    comment = comment.rstrip()
+    if comment.startswith(" "):
+        comment = comment[1:]
+    if comment and not comment.strip(";=- "):
+        return ""
+    return comment
 
 
 def join_comments(comments: list[str]) -> str:
-    """Join comment lines while discarding decorative separators."""
-    return "\n".join(line for line in comments if line).strip()
+    """Render comment lines as Markdown without collapsing source spacing."""
+    start = 0
+    end = len(comments)
+    while start < end and not comments[start]:
+        start += 1
+    while end > start and not comments[end - 1]:
+        end -= 1
+
+    paragraphs: list[str] = []
+    current: list[str] = []
+    for line in comments[start:end]:
+        if not line:
+            if current:
+                paragraphs.append("  \n".join(current))
+                current = []
+            continue
+        current.append(line)
+    if current:
+        paragraphs.append("  \n".join(current))
+    return "\n\n".join(paragraphs)
+
+
+def parse_macro_signature(signature: str) -> tuple[str, ...]:
+    """Parse canonical or legacy macro declaration syntax."""
+    match = re.fullmatch(
+        rf"(?P<name>{IDENT})(?:(?:\s*,\s*|\s+)(?P<parameters>"
+        rf"{IDENT}(?:\s*,\s*{IDENT})*))?",
+        signature.strip(),
+    )
+    if match is None:
+        return ()
+    parameters = match.group("parameters")
+    if parameters is None:
+        return (match.group("name"),)
+    return (
+        match.group("name"),
+        *(parameter.strip() for parameter in parameters.split(",")),
+    )
+
+
+def without_repeated_macro_signature(documentation: str, name: str) -> str:
+    """Drop a leading signature comment already rendered by macro hover."""
+    first_paragraph, separator, remainder = documentation.partition("\n\n")
+    if (
+        separator
+        and first_paragraph.startswith(f"`{name}")
+        and first_paragraph.endswith("`")
+    ):
+        return remainder
+    return documentation
 
 
 def parse_arguments(arguments: str) -> tuple[str, ...]:

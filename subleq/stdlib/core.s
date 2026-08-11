@@ -13,32 +13,32 @@
 ; `jmp target`
 ;
 ; Jump unconditionally to `target`.
-; Instructions: 1. Clobbers: none (`z` remains zero).
-.macro jmp, target
+; Instructions: 1. Changes: no data cells (`z` remains zero).
+.macro jmp target
     subleq z, z, target
 .endm
 
 ; `clr target`
 ;
 ; Set `target` to zero.
-; Instructions: 1. Clobbers: `target`.
-.macro clr, target
+; Instructions: 1. Changes: `target`.
+.macro clr target
     subleq target, target, ?
 .endm
 
 ; `sub source, destination`
 ;
 ; Compute `destination = destination - source`.
-; Instructions: 1. Clobbers: `destination`.
-.macro sub, source, destination
+; Instructions: 1. Changes: `destination`.
+.macro sub source, destination
     subleq source, destination, ?
 .endm
 
 ; `add source, destination`
 ;
 ; Compute `destination = destination + source` without changing `source`.
-; Instructions: 3. Clobbers: `destination`, `z` (restored).
-.macro add, source, destination
+; Instructions: 3. Changes: `destination`; uses `z` as restored scratch.
+.macro add source, destination
     sub source, z
     sub z, destination
     clr z
@@ -47,8 +47,8 @@
 ; `cpy source, destination`
 ;
 ; Copy `source` into `destination`.
-; Instructions: 4. Clobbers: `destination`, `z` (restored).
-.macro cpy, source, destination
+; Instructions: 4. Changes: `destination`; uses `z` as restored scratch.
+.macro cpy source, destination
     clr destination
     add source, destination
 .endm
@@ -56,40 +56,40 @@
 ; `dec target`
 ;
 ; Decrement `target` by one.
-; Instructions: 1. Clobbers: `target`.
-.macro dec, target
+; Instructions: 1. Changes: `target`.
+.macro dec target
     sub p1, target
 .endm
 
 ; `inc target`
 ;
 ; Increment `target` by one.
-; Instructions: 1. Clobbers: `target`.
-.macro inc, target
+; Instructions: 1. Changes: `target`.
+.macro inc target
     sub m1, target
 .endm
 
 ; `dbl target`
 ;
 ; Double `target` in place.
-; Instructions: 3. Clobbers: `target`, `z` (restored).
-.macro dbl, target
+; Instructions: 3. Changes: `target`; uses `z` as restored scratch.
+.macro dbl target
     add target, target
 .endm
 
 ; `bleq value, target`
 ;
 ; Branch to `target` when signed `value <= 0`.
-; Instructions: 1. Clobbers: none.
-.macro bleq, value, target
+; Instructions: 1. Changes: no data cells.
+.macro bleq value, target
     subleq z, value, target
 .endm
 
 ; `bgt value, target`
 ;
 ; Branch to `target` when signed `value > 0`.
-; Instructions: 2. Clobbers: none.
-.macro bgt, value, target
+; Instructions: 2. Changes: no data cells.
+.macro bgt value, target
     bleq value, @return
     jmp target
 @return:
@@ -99,8 +99,8 @@
 ;
 ; Branch to `target` when `value == 0`. The tested value is restored before
 ; either path continues.
-; Instructions: 9. Clobbers: `value` temporarily.
-.macro beq, value, target
+; Instructions: 9. Changes: `value` temporarily, restoring it before return.
+.macro beq value, target
     bgt value, @return
     inc value
     bgt value, @restore_and_jump
@@ -115,8 +115,8 @@
 ; `bne value, target`
 ;
 ; Branch to `target` when `value != 0`.
-; Instructions: 10. Clobbers: `value` temporarily.
-.macro bne, value, target
+; Instructions: 10. Changes: `value` temporarily, restoring it before return.
+.macro bne value, target
     beq value, @return
     jmp target
 @return:
@@ -125,8 +125,8 @@
 ; `bpl value, target`
 ;
 ; Branch to `target` when signed `value >= 0`.
-; Instructions: 11. Clobbers: `value` temporarily.
-.macro bpl, value, target
+; Instructions: 11. Changes: `value` temporarily, restoring it before return.
+.macro bpl value, target
     bgt value, target
     beq value, target
 .endm
@@ -134,8 +134,8 @@
 ; `bmi value, target`
 ;
 ; Branch to `target` when signed `value < 0`.
-; Instructions: 10. Clobbers: `value` temporarily.
-.macro bmi, value, target
+; Instructions: 10. Changes: `value` temporarily, restoring it before return.
+.macro bmi value, target
     beq value, @return
     bleq value, target
 @return:

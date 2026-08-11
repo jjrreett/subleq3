@@ -8,14 +8,14 @@ from subleq.lsp import included_symbols, index_to_utf16, utf16_to_index
 
 SOURCE = """\
 ; Add source to destination.
-.macro add, source, destination
+.macro add source, destination
     subleq source, zero, ?
     subleq zero, destination, ?
     subleq zero, zero, ?
 .endm
 
 ; Invoke another macro twice.
-.macro add_twice, source, destination
+.macro add_twice source, destination
 @again:
     add source, destination
     add source, destination
@@ -47,9 +47,39 @@ class AnalysisTests(unittest.TestCase):
 
         self.assertIsNotNone(hover)
         assert hover is not None
-        self.assertIn("add_twice, source, destination", hover.markdown)
+        self.assertIn("add_twice source, destination", hover.markdown)
         self.assertIn("Invoke another macro twice.", hover.markdown)
         self.assertIn("6 SUBLEQ instructions", hover.markdown)
+
+    def test_hover_preserves_comment_lines_and_blank_paragraphs(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            "; First line.\n"
+            "; Second line.\n"
+            ";\n"
+            ";     indented detail\n"
+            ".macro documented value\n"
+            "    subleq value, value, ?\n"
+            ".endm\n"
+        )
+
+        hover = analysis.hover_at(4, 8)
+
+        self.assertIsNotNone(hover)
+        assert hover is not None
+        self.assertIn("First line.  \nSecond line.", hover.markdown)
+        self.assertIn("Second line.\n\n    indented detail", hover.markdown)
+
+    def test_legacy_macro_declaration_is_still_understood(self) -> None:
+        analysis = DocumentAnalysis.parse(
+            ".macro legacy, source, destination\n"
+            "    subleq source, destination, ?\n"
+            ".endm\n"
+        )
+
+        self.assertEqual(
+            analysis.macros["legacy"].parameters,
+            ("source", "destination"),
+        )
 
     def test_go_to_macro_and_local_label_definitions(self) -> None:
         macro = self.analysis.definition_at(16, 6)
@@ -140,6 +170,32 @@ class AnalysisTests(unittest.TestCase):
             {name: macros[name].instruction_count for name in expected_counts},
             expected_counts,
         )
+
+    def test_pointer_macro_hovers_explain_destructive_difference(self) -> None:
+        source = (
+            ".include <subroutine.s>\n"
+            "main:\n"
+            "    rpt pointer, destination\n"
+            "    read_word pointer, destination\n"
+        )
+        macros, labels = included_symbols(source, Path.cwd(), set())
+        analysis = DocumentAnalysis.parse(
+            source,
+            external_macros=macros,
+            external_global_labels=labels,
+        )
+
+        rpt_hover = analysis.hover_at(2, 6)
+        read_hover = analysis.hover_at(3, 8)
+
+        self.assertIsNotNone(rpt_hover)
+        self.assertIsNotNone(read_hover)
+        assert rpt_hover is not None and read_hover is not None
+        self.assertIn("destructive", rpt_hover.markdown)
+        self.assertIn("read_word", rpt_hover.markdown)
+        self.assertIn("non-destructive", read_hover.markdown)
+        self.assertIn("`rpt`", read_hover.markdown)
+        self.assertEqual(read_hover.markdown.count("read_word pointer, destination"), 1)
 
 
 if __name__ == "__main__":
