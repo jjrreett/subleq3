@@ -23,7 +23,7 @@
 ; expansion executes, so a call site can run repeatedly.
 ; Changes: writes characters to `IO`. Uses `z` (restored) and private cells.
 .macro print_asciiz string
-        cpy @string_address, @pointer
+    cpy @string_address, @pointer
     @next:
         read_word @pointer, @character
         beq @character, @return

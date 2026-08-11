@@ -23,24 +23,24 @@ func_print_bin:
     rts
     pop @value
     cpy #16, @counter
-@check_msb:
-    bmi @value, @print_one
-    sub #48, IO
-    jmp @shift
-@print_one:
-    sub #49, IO
-@shift:
-    subleq #1, @counter, @return
-    dbl @value
-    jmp @check_msb
-@return:
-    newline
-    jmp func_print_bin
+    @check_msb:
+        bmi @value, @print_one
+        sub #48, IO
+        jmp @shift
+    @print_one:
+        sub #49, IO
+    @shift:
+        subleq #1, @counter, @return
+        dbl @value
+        jmp @check_msb
+    @return:
+        newline
+        jmp func_print_bin
 
-    .data
-        @value: 0
-        @counter: 0
-    .endd
+        .data
+            @value: 0
+            @counter: 0
+        .endd
 
 ; `func_print_dec`
 ;
@@ -56,47 +56,47 @@ func_print_dec:
     clr @thousands
     clr @ten_thousands
     cpy #16, @counter
-@shift:
-    double_dabble_add_3 @thousands
-    double_dabble_add_3 @hundreds
-    double_dabble_add_3 @tens
-    double_dabble_add_3 @ones
+    @shift:
+        double_dabble_add_3 @thousands
+        double_dabble_add_3 @hundreds
+        double_dabble_add_3 @tens
+        double_dabble_add_3 @ones
 
-    dbl @ten_thousands
-    nibble_lslo @thousands, @ten_thousands
-    nibble_lslo @hundreds, @thousands
-    nibble_lslo @tens, @hundreds
-    nibble_lslo @ones, @tens
-    lslo @input, @ones
+        dbl @ten_thousands
+        nibble_lslo @thousands, @ten_thousands
+        nibble_lslo @hundreds, @thousands
+        nibble_lslo @tens, @hundreds
+        nibble_lslo @ones, @tens
+        lslo @input, @ones
 
-    subleq #1, @counter, @print
-    jmp @shift
-@print:
-    cpy #48, @character
-    add @ten_thousands, @character
-    sub @character, IO
-    cpy #48, @character
-    add @thousands, @character
-    sub @character, IO
-    cpy #48, @character
-    add @hundreds, @character
-    sub @character, IO
-    cpy #48, @character
-    add @tens, @character
-    sub @character, IO
-    cpy #48, @character
-    add @ones, @character
-    sub @character, IO
-    newline
-    jmp func_print_dec
+        subleq #1, @counter, @print
+        jmp @shift
+    @print:
+        cpy #48, @character
+        add @ten_thousands, @character
+        sub @character, IO
+        cpy #48, @character
+        add @thousands, @character
+        sub @character, IO
+        cpy #48, @character
+        add @hundreds, @character
+        sub @character, IO
+        cpy #48, @character
+        add @tens, @character
+        sub @character, IO
+        cpy #48, @character
+        add @ones, @character
+        sub @character, IO
+        newline
+        jmp func_print_dec
 
-    .data
-        @input: 0
-        @counter: 0
-        @character: 0
-        @ones: 0
-        @tens: 0
-        @hundreds: 0
-        @thousands: 0
-        @ten_thousands: 0
-    .endd
+        .data
+            @input: 0
+            @counter: 0
+            @character: 0
+            @ones: 0
+            @tens: 0
+            @hundreds: 0
+            @thousands: 0
+            @ten_thousands: 0
+        .endd

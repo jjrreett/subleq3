@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from . import __version__
 from . import compile as compiler
 from . import gen_grammar
+from . import formatter
 from . import lsp
 from . import run as emulator
 from . import testing
@@ -46,6 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Compile and run test harnesses embedded in SUBLEQ source",
     )
     testing.configure_parser(test_parser)
+
+    format_parser = subcommands.add_parser(
+        "fmt",
+        help="Format assembly source in place",
+        description="Format SUBLEQ assembly source in place",
+    )
+    formatter.configure_parser(format_parser)
 
     emulate_parser = subcommands.add_parser(
         "emulate",

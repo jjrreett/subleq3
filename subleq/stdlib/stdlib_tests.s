@@ -8,7 +8,7 @@
 .include <math.s>
 
 .test "core/add and copy"
-    .bootstrap
+.bootstrap
 main:
     cpy left, result
     add right, result
@@ -19,12 +19,12 @@ z:      .word 0
 left:   .word 19
 right:  .word 23
 result: .word 0
-    .assert result, 42
-    .assert z, 0
+.assert result, 42
+.assert z, 0
 .endt
 
 .test "math/double dabble add three"
-    .bootstrap
+.bootstrap
 main:
     double_dabble_add_3 low_digit
     double_dabble_add_3 high_digit
@@ -35,12 +35,12 @@ z:          .word 0
 low_digit:  .word 4
 high_digit: .word 5
 .literals 2
-    .assert low_digit, 4
-    .assert high_digit, 8
+.assert low_digit, 4
+.assert high_digit, 8
 .endt
 
 .test "memory/non-destructive read"
-    .bootstrap
+.bootstrap
 main:
     read_word pointer, destination
     jmp halt
@@ -50,12 +50,12 @@ z:           .word 0
 source:      .word $1234
 pointer:     .word source
 destination: .word 0
-    .assert source, $1234
-    .assert destination, $1234
+.assert source, $1234
+.assert destination, $1234
 .endt
 
 .test "subroutine/stack round trip"
-    .bootstrap
+.bootstrap
 double:
     rts
     pop argument
@@ -76,12 +76,12 @@ argument:  .word 0
 stack:     .res 16
 stack_ptr: .word stack
 .literals 2
-    .assert output, 42
-    .assert stack_ptr, stack
+.assert output, 42
+.assert stack_ptr, stack
 .endt
 
 .test "io/string and newline"
-    .bootstrap
+.bootstrap
 main:
     print_asciiz message
     newline
@@ -91,12 +91,12 @@ halt:
 z:       .word 0
 message: .asciiz "OK"
 .literals 4
-    .assert-output "OK\n\r"
+.assert-output "OK\n\r"
 .endt
 
 .test "print/binary and decimal"
-    .bootstrap
-    .include <print.s>
+.bootstrap
+.include <print.s>
 main:
     psh value
     jsr func_print_bin
@@ -110,5 +110,5 @@ value:     .word 42
 stack:     .res 16
 stack_ptr: .word stack
 .literals 16
-    .assert-output "0000000000101010\n\r00042\n\r"
+.assert-output "0000000000101010\n\r00042\n\r"
 .endt

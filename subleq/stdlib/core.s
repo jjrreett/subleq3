@@ -91,7 +91,7 @@
 .macro bgt value, target
     bleq value, @return
     jmp target
-@return:
+    @return:
 .endm
 
 ; `beq value, target`
@@ -105,10 +105,10 @@
     bgt value, @restore_and_jump
     dec value
     jmp @return
-@restore_and_jump:
-    dec value
-    jmp target
-@return:
+    @restore_and_jump:
+        dec value
+        jmp target
+    @return:
 .endm
 
 ; `bne value, target`
@@ -118,7 +118,7 @@
 .macro bne value, target
     beq value, @return
     jmp target
-@return:
+    @return:
 .endm
 
 ; `bpl value, target`
@@ -137,5 +137,5 @@
 .macro bmi value, target
     beq value, @return
     bleq value, target
-@return:
+    @return:
 .endm

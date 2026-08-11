@@ -5,21 +5,21 @@
 ;;;;;;; b = b * a ;;;;;;;;; WIP
 .macro fmul, a, b
     @while:
-        bleq b, @return           ; if b <= 0: return
+        bleq b, @return                    ; if b <= 0: return
         cpy b, @temporary
         lsl #15, @temporary
-        bpl @temporary, @shift          ; if b & 1:
-        add a, @result           ;     result += a
+        bpl @temporary, @shift             ; if b & 1:
+        add a, @result                     ; result += a
         sub @result, IO
     @shift:
-        dbl a           ; double a
-        lsr #1, b   ; halve b
+        dbl a                              ; double a
+        lsr #1, b                          ; halve b
         jmp @while
 
-    .data
-        @result: 0
-        @temporary: 0
-    .endd
+        .data
+            @result: 0
+            @temporary: 0
+        .endd
 
     @return:
         cpy @result, b
@@ -37,16 +37,16 @@
 .include <print.s>
 
 main:
-        print_asciiz boot_prompt
-        jmp test
+    print_asciiz boot_prompt
+    jmp test
 
-test:    
-        print_asciiz input_prompt
-        clr input
-        sub IO, input
-        psh input
-        jsr func_print_dec
-        jmp test
+test:
+    print_asciiz input_prompt
+    clr input
+    sub IO, input
+    psh input
+    jsr func_print_dec
+    jmp test
 
 
 

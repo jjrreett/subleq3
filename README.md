@@ -424,8 +424,27 @@ subleq compile programs/program/program.s -l
 subleq emulate programs/program/program.npy -l
 ```
 
-The other subcommands are `subleq test`, `subleq gen-grammar`, and `subleq lsp`. Run
-`subleq --help` or `subleq <command> --help` for the complete options.
+The other subcommands are `subleq test`, `subleq fmt`, `subleq gen-grammar`,
+and `subleq lsp`. Run `subleq --help` or `subleq <command> --help` for the
+complete options.
+
+## Formatting
+
+Format assembly files in place with the built-in formatter:
+
+```powershell
+subleq fmt programs subleq/stdlib
+```
+
+Directories are searched recursively for `.s` files. Global labels remain at
+column 1, local and macro labels are indented four spaces, and instructions
+under those labels are indented another four spaces. Inline semicolon comments
+align at column 44 when the instruction fits. Formatting is deterministic and
+idempotent. CI can check for drift without modifying files:
+
+```powershell
+subleq fmt --check programs subleq/stdlib
+```
 
 ## Language server
 

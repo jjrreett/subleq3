@@ -11,17 +11,17 @@
 ; Changes: `source` and `destination`. Uses `z` (restored) and private scratch.
 .macro mul source, destination
     inc source
-@loop:
-    subleq #1, source, @break
-    add destination, @temporary
-    jmp @loop
-@break:
-    clr destination
-    add @temporary, destination
-    jmp @return
+    @loop:
+        subleq #1, source, @break
+        add destination, @temporary
+        jmp @loop
+    @break:
+        clr destination
+        add @temporary, destination
+        jmp @return
 
-    .data @temporary: 0 .endd
-@return:
+        .data @temporary: 0 .endd
+    @return:
 .endm
 
 ; `lsl count, value`
@@ -31,13 +31,13 @@
 .macro lsl count, value
     cpy count, @counter
     inc @counter
-@loop:
-    subleq #1, @counter, @return
-    dbl value
-    jmp @loop
+    @loop:
+        subleq #1, @counter, @return
+        dbl value
+        jmp @loop
 
-    .data @counter: 0 .endd
-@return:
+        .data @counter: 0 .endd
+    @return:
 .endm
 
 ; `lsr source, value`
@@ -50,34 +50,34 @@
     inc @count
     subleq #1, @count, @end
     jmp @rshift_start
-@shift:
-    dbl source
-    dbl @out
+    @shift:
+        dbl source
+        dbl @out
 
-@rshift_start:
-    clr @temporary
-    add source, @temporary
-    subleq #-1, @temporary, @increment_out
-    subleq @temporary, @temporary, @check_break
+    @rshift_start:
+        clr @temporary
+        add source, @temporary
+        subleq #-1, @temporary, @increment_out
+        subleq @temporary, @temporary, @check_break
 
-@increment_out:
-    inc @out
+    @increment_out:
+        inc @out
 
-@check_break:
-    subleq #1, @count, @end
-    jmp @shift
+    @check_break:
+        subleq #1, @count, @end
+        jmp @shift
 
-@end:
-    clr value
-    add @out, value
-    jmp @return
+    @end:
+        clr value
+        add @out, value
+        jmp @return
 
-    .data
-        @count: 0
-        @temporary: 0
-        @out: 0
-    .endd
-@return:
+        .data
+            @count: 0
+            @temporary: 0
+            @out: 0
+        .endd
+    @return:
 .endm
 
 ; `double_dabble_add_3 digit`
@@ -91,7 +91,7 @@
     jmp @return
 
     .data @temporary: 0 .endd
-@return:
+    @return:
 .endm
 
 ; `nibble_lslo input, output`
@@ -118,7 +118,7 @@
     jmp @return
 
     .data @temporary: 0 .endd
-@return:
+    @return:
 .endm
 
 ; `lslo input, output`
@@ -128,6 +128,6 @@
 .macro lslo input, output
     bpl input, @shift
     inc output
-@shift:
-    dbl input
+    @shift:
+        dbl input
 .endm

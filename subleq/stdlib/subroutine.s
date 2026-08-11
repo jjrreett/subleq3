@@ -36,11 +36,11 @@
 
     .data
         @code_a: 0
-                 destination
-                 ?
+        destination
+        ?
         @code_a0: 0
         @code_a1: 0
-                  ?
+        ?
     .endd
 .endm
 
@@ -88,7 +88,7 @@
     wpt @return_address, stack_ptr
     inc stack_ptr
     jmp target
-@return_address: .word ?
+    @return_address: .word ?
 .endm
 
 ; `rts`
@@ -106,7 +106,7 @@
         @return_address: 0
         @second_pass: 0
     .endd
-@setup:
-    inc @second_pass
-    pop @return_address
+    @setup:
+        inc @second_pass
+        pop @return_address
 .endm
