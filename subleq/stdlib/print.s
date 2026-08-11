@@ -15,8 +15,6 @@
 .include <io.s>
 .include <math.s>
 
-; `func_print_bin`
-;
 ; Pop one 16-bit value, print all 16 binary digits followed by a newline, and
 ; return. The argument is consumed and there is no result.
 func_print_bin:
@@ -42,8 +40,6 @@ func_print_bin:
             @counter: 0
         .endd
 
-; `func_print_dec`
-;
 ; Pop one unsigned 16-bit value, print all five decimal digits (including
 ; leading zeroes) followed by a newline, and return. The argument is consumed
 ; and there is no result.

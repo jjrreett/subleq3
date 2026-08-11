@@ -8,8 +8,6 @@
 
 .include <memory.s>
 
-; `newline`
-;
 ; Write line-feed and carriage-return characters to `IO`.
 ; Changes: writes two characters to the `IO` device.
 .macro newline
@@ -17,8 +15,6 @@
     sub #13, IO
 .endm
 
-; `print_asciiz string`
-;
 ; Write a null-terminated string to `IO`. The pointer is reset each time the
 ; expansion executes, so a call site can run repeatedly.
 ; Changes: writes characters to `IO`. Uses `z` (restored) and private cells.

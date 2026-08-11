@@ -547,12 +547,7 @@ class DocumentAnalysis:
             signature = f"{symbol.name}{' ' if arguments else ''}{arguments}"
             sections = [f"```subleq\n{signature}\n```"]
             if symbol.documentation:
-                sections.append(
-                    without_repeated_macro_signature(
-                        symbol.documentation,
-                        symbol.name,
-                    )
-                )
+                sections.append(symbol.documentation)
             if symbol.instruction_count is not None:
                 noun = (
                     "instruction" if symbol.instruction_count == 1 else "instructions"
@@ -683,18 +678,6 @@ def parse_macro_signature(signature: str) -> tuple[str, ...]:
         match.group("name"),
         *(parameter.strip() for parameter in parameters.split(",")),
     )
-
-
-def without_repeated_macro_signature(documentation: str, name: str) -> str:
-    """Drop a leading signature comment already rendered by macro hover."""
-    first_paragraph, separator, remainder = documentation.partition("\n\n")
-    if (
-        separator
-        and first_paragraph.startswith(f"`{name}")
-        and first_paragraph.endswith("`")
-    ):
-        return remainder
-    return documentation
 
 
 def parse_arguments(arguments: str) -> tuple[str, ...]:

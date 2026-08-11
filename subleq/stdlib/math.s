@@ -5,8 +5,6 @@
 
 .include <core.s>
 
-; `mul source, destination`
-;
 ; Multiply `destination` by `source` using repeated addition.
 ; Changes: `source` and `destination`. Uses `z` (restored) and private scratch.
 .macro mul source, destination
@@ -24,8 +22,6 @@
     @return:
 .endm
 
-; `lsl count, value`
-;
 ; Shift `value` left by `count` bits.
 ; Changes: `value`. Uses `z` (restored) and a private counter.
 .macro lsl count, value
@@ -40,8 +36,6 @@
     @return:
 .endm
 
-; `lsr source, value`
-;
 ; Shift `value` right using `source` as the working bit accumulator.
 ; Changes: both operands. Uses `z` (restored) and private scratch.
 .macro lsr source, value
@@ -80,8 +74,6 @@
     @return:
 .endm
 
-; `double_dabble_add_3 digit`
-;
 ; Apply the add-three step used by double-dabble binary-to-decimal conversion.
 ; Changes: `digit`. Uses `z` (restored) and private scratch.
 .macro double_dabble_add_3 digit
@@ -94,8 +86,6 @@
     @return:
 .endm
 
-; `nibble_lslo input, output`
-;
 ; Shift a four-bit value left, carrying overflow into `output`.
 ; Changes: both operands. Uses `z` (restored) and private scratch.
 .macro nibble_lslo input, output
@@ -121,8 +111,6 @@
     @return:
 .endm
 
-; `lslo input, output`
-;
 ; Shift a 16-bit value left, carrying its most-significant bit into `output`.
 ; Changes: both operands.
 .macro lslo input, output

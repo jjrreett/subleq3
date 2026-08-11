@@ -5,8 +5,6 @@
 
 .include <core.s>
 
-; `read_word pointer, destination`
-;
 ; Read the word addressed by `pointer` without modifying the source word.
 ; Unlike the stack helper `rpt`, this is a non-destructive indirect read.
 ; Changes: `destination`. Uses `z` (restored) and private code words as scratch.

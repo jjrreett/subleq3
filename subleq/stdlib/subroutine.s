@@ -13,8 +13,6 @@
 
 .include <memory.s>
 
-; `rpt pointer, destination`
-;
 ; **Destructive stack transfer.**
 ;
 ; Subtract the word addressed by `pointer` into `destination`, then clear that
@@ -44,8 +42,6 @@
     .endd
 .endm
 
-; `wpt source, pointer`
-;
 ; Write the value in `source` to the address stored in `pointer` using
 ; self-modifying code. Neither input cell is changed.
 ; Changes: the addressed word. Uses private code words as scratch.
@@ -60,8 +56,6 @@
     .endd
 .endm
 
-; `psh source`
-;
 ; Push the value in `source`, then advance `stack_ptr`.
 ; Changes: `stack_ptr` and the next stack word. Uses private code as scratch.
 .macro psh source
@@ -69,8 +63,6 @@
     inc stack_ptr
 .endm
 
-; `pop destination`
-;
 ; Retreat `stack_ptr`, then pop into `destination`.
 ; Changes: `destination`, `stack_ptr`, and the popped stack word. Uses private
 ; code as scratch.
@@ -79,8 +71,6 @@
     rpt stack_ptr, destination
 .endm
 
-; `jsr target`
-;
 ; Push the return address and jump to `target`. Arguments and return values are
 ; passed explicitly on the data stack with `psh` and `pop`.
 ; Changes: `stack_ptr` and the next stack word. Uses private code as scratch.
@@ -91,8 +81,6 @@
     @return_address: .word ?
 .endm
 
-; `rts`
-;
 ; Two-phase subroutine return. Place this at a function's entry point and jump
 ; back to that entry after the function body. The first pass captures the
 ; caller's return address; the second pass jumps to it.
