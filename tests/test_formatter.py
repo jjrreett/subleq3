@@ -27,13 +27,13 @@ subleq zero, zero, 0
             """\
 main:
     @loop:
-        subleq one, counter, @done         ; decrement
+        subleq one, counter, @done                    ; decrement
     @done:
         subleq zero, zero, 0
 """,
         )
         comment_line = formatted.splitlines()[2]
-        self.assertEqual(comment_line.index(";"), 43)
+        self.assertEqual(comment_line.index(";"), 54)
 
     def test_macro_and_data_bodies_gain_one_level(self) -> None:
         source = """\

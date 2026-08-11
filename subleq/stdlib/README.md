@@ -142,6 +142,7 @@ immediates require capacity in the program's `.literals` pool.
 | Macro | Effect | State changed |
 | --- | --- | --- |
 | `mul source, destination` | Multiply by repeated addition | both operands, private scratch, `z` restored |
+| `fmul multiplicand, multiplier` | Multiply with binary shift-and-add | both operands, private scratch, `z` restored |
 | `lsl count, value` | Shift `value` left by `count` bits | `value`, private counter, `z` restored |
 | `lsr source, value` | Shift `value` right with a working bit accumulator | both operands, private scratch, `z` restored |
 | `double_dabble_add_3 digit` | Apply double-dabble's add-three step | `digit`, private scratch, `z` restored |

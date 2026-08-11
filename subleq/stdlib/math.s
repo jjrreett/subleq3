@@ -74,6 +74,37 @@
     @return:
 .endm
 
+; Multiply `multiplier` by `multiplicand` using binary shift-and-add.
+; Changes: both operands. Uses `z` (restored) and private scratch.
+.macro fmul multiplicand, multiplier
+    clr @result
+    @while:
+        bleq multiplier, @return
+        cpy multiplier, @remainder
+        clr @quotient
+    @halve:
+        beq @remainder, @shift
+        dec @remainder
+        beq @remainder, @odd
+        dec @remainder
+        inc @quotient
+        jmp @halve
+    @odd:
+        add multiplicand, @result
+    @shift:
+        cpy @quotient, multiplier
+        dbl multiplicand
+        jmp @while
+
+        .data
+            @result: 0
+            @remainder: 0
+            @quotient: 0
+        .endd
+    @return:
+        cpy @result, multiplier
+.endm
+
 ; Apply the add-three step used by double-dabble binary-to-decimal conversion.
 ; Changes: `digit`. Uses `z` (restored) and private scratch.
 .macro double_dabble_add_3 digit

@@ -2,33 +2,6 @@
 .include <io.s>
 .include <math.s>
 
-;;;;;;; b = b * a ;;;;;;;;; WIP
-.macro fmul, a, b
-    @while:
-        bleq b, @return                    ; if b <= 0: return
-        cpy b, @temporary
-        lsl #15, @temporary
-        bpl @temporary, @shift             ; if b & 1:
-        add a, @result                     ; result += a
-        sub @result, IO
-    @shift:
-        dbl a                              ; double a
-        lsr #1, b                          ; halve b
-        jmp @while
-
-        .data
-            @result: 0
-            @temporary: 0
-        .endd
-
-    @return:
-        cpy @result, b
-
-.endm
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -17,7 +17,7 @@ class StandardLibraryHarnessTests(unittest.TestCase):
 
         results = run_source_tests([source])
 
-        self.assertEqual(len(results), 6)
+        self.assertEqual(len(results), 7)
         self.assertTrue(
             all(result.passed for result in results),
             {result.name: result.failures for result in results if not result.passed},

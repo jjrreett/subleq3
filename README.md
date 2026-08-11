@@ -439,7 +439,7 @@ subleq fmt programs subleq/stdlib
 Directories are searched recursively for `.s` files. Global labels remain at
 column 1, local and macro labels are indented four spaces, and instructions
 under those labels are indented another four spaces. Inline semicolon comments
-align at column 44 when the instruction fits. Formatting is deterministic and
+align at column 55 when the instruction fits. Formatting is deterministic and
 idempotent. CI can check for drift without modifying files:
 
 ```powershell

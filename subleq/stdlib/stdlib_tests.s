@@ -39,6 +39,21 @@ high_digit: .word 5
 .assert high_digit, 8
 .endt
 
+.test "math/fast multiply"
+.bootstrap
+main:
+    fmul multiplicand, multiplier
+    jmp halt
+halt:
+    subleq z, z, 0
+z:            .word 0
+multiplicand: .word 6
+multiplier:   .word 7
+.literals 8
+.assert multiplier, 42
+.assert z, 0
+.endt
+
 .test "memory/non-destructive read"
 .bootstrap
 main:

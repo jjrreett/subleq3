@@ -12,7 +12,7 @@ from rich import print
 from .analysis import IDENT, split_comment
 
 INDENT = 4
-INLINE_COMMENT_COLUMN = 44
+INLINE_COMMENT_COLUMN = 55
 _LABEL_RE = re.compile(rf"(?P<label>@?{IDENT})\s*:")
 
 
