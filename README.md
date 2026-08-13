@@ -139,6 +139,7 @@ Directives emit words at the current position:
 .byte  $ff, 1
 .word  $1234, -1
 .dword $12345678
+.char  'A'
 .ascii "Hello"
 .asciiz "World"
 .fill  10, $00
@@ -153,6 +154,7 @@ Their intended meanings are:
 | `.byte n, ...` | One word per numeric value. Byte-range checking is not currently enforced. |
 | `.word value, ...` | One word per number, label address, or `?` value. |
 | `.dword n, ...` | Two words per value, high word followed by low word. |
+| `.char 'c'` | One word containing the character's code point. Standard escapes are supported. |
 | `.ascii "text"` | One word per character. |
 | `.asciiz "text"` | The characters followed by a zero word. |
 | `.fill count, value` | `count` copies of `value`. |
@@ -162,6 +164,10 @@ Their intended meanings are:
 `.word` accepts labels and macro arguments because machine addresses are
 16-bit words. `.byte` and `.dword` remain numeric-only until their truncation
 and relocation behavior is defined.
+
+A leading single quote makes a character immediate: `'A` is shorthand for
+`#65`, and `'\n` is shorthand for `#10`. Like numeric immediates, character
+immediates are deduplicated and hoisted into the space reserved by `.literals`.
 
 The more general `.data` block accepts numbers, labels, local labels, and `?`,
 one item after another until `.endd`:
@@ -425,8 +431,8 @@ subleq emulate programs/program/program.npy -l
 ```
 
 The other subcommands are `subleq test`, `subleq fmt`, `subleq gen-grammar`,
-and `subleq lsp`. Run `subleq --help` or `subleq <command> --help` for the
-complete options.
+`subleq gen-syntax`, and `subleq lsp`. Run `subleq --help` or
+`subleq <command> --help` for the complete options.
 
 ## Formatting
 
@@ -537,6 +543,15 @@ uv run subleq gen-grammar
 ```
 
 Do not edit the generated parser by hand.
+
+The VS Code TextMate grammar is also generated from `subleq.lark`, with the
+linker and embedded-test directives supplied by the editor analysis metadata:
+
+```powershell
+uv run subleq gen-syntax
+```
+
+Do not edit `editors/vscode/syntaxes/subleq.tmLanguage.json` by hand.
 
 ## Current development status
 

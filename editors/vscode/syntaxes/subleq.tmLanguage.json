@@ -10,6 +10,9 @@
       "include": "#strings"
     },
     {
+      "include": "#characters"
+    },
+    {
       "include": "#macroDefinitions"
     },
     {
@@ -26,6 +29,9 @@
     },
     {
       "include": "#specialValues"
+    },
+    {
+      "include": "#labelReferences"
     }
   ],
   "repository": {
@@ -52,10 +58,18 @@
         }
       ]
     },
+    "characters": {
+      "patterns": [
+        {
+          "name": "constant.character.subleq",
+          "match": "'(?:[^'\\\\\\n\\r]|\\\\['\\\\nrt0])'?"
+        }
+      ]
+    },
     "macroDefinitions": {
       "patterns": [
         {
-          "begin": "^(\\s*)(\\.macro)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(?=\\s|,|$)",
+          "begin": "^(\\s*)(\\.macro)(\\s+)((?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*))(?=\\s|,|$)",
           "beginCaptures": {
             "2": {
               "name": "keyword.control.directive.macro.subleq"
@@ -99,28 +113,28 @@
     "macroLabels": {
       "patterns": [
         {
-          "name": "entity.name.function.label.local.subleq",
-          "match": "@?[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+          "name": "variable.other.label.subleq",
+          "match": "@?(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)(?=\\s*:)"
         },
         {
-          "name": "variable.other.label.local.subleq",
-          "match": "@[A-Za-z_][A-Za-z0-9_]*"
+          "name": "variable.other.label.subleq",
+          "match": "@(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)"
+        },
+        {
+          "name": "variable.other.label.subleq",
+          "match": "(?<![A-Za-z0-9_])(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)(?![A-Za-z0-9_])"
         }
       ]
     },
     "labels": {
       "patterns": [
         {
-          "name": "entity.name.function.label.local.subleq",
-          "match": "@[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+          "name": "variable.other.label.subleq",
+          "match": "@(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)(?=\\s*:)"
         },
         {
-          "name": "entity.name.function.label.global.subleq",
-          "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
-        },
-        {
-          "name": "variable.other.label.local.subleq",
-          "match": "@[A-Za-z_][A-Za-z0-9_]*"
+          "name": "variable.other.label.subleq",
+          "match": "(?<![A-Za-z0-9_])(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)(?=\\s*:)"
         }
       ]
     },
@@ -128,7 +142,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.subleq",
-          "match": "\\.(?:include|data|endd|macro|endm|byte|word|dword|ascii|asciiz|fill|res|literals|bootstrap|test|endt|set|assert|assert-output)\\b"
+          "match": "\\.(?:data|endd|macro|endm|byte|word|dword|char|ascii|asciiz|fill|res|literals|bootstrap|include|test|endt|set|assert|assert\\-output)\\b"
         }
       ]
     },
@@ -140,7 +154,7 @@
         },
         {
           "name": "support.function.macro.subleq",
-          "match": "^(?:\\s*)([A-Za-z_][A-Za-z0-9_]*)(?=\\s|$)",
+          "match": "^(?:\\s*)((?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*))(?=\\s|$)",
           "captures": {
             "1": {
               "name": "support.function.macro.subleq"
@@ -152,16 +166,20 @@
     "numbers": {
       "patterns": [
         {
+          "name": "constant.numeric.immediate.subleq",
+          "match": "#-?(?:\\$[A-Fa-f0-9]+|%[01]+|\\d+)(?![A-Za-z0-9_])"
+        },
+        {
           "name": "constant.numeric.hex.subleq",
-          "match": "#?-?\\$[A-Fa-f0-9]+\\b"
+          "match": "-?\\$[A-Fa-f0-9]+(?![A-Za-z0-9_])"
         },
         {
           "name": "constant.numeric.binary.subleq",
-          "match": "#?-?%[01]+\\b"
+          "match": "-?%[01]+(?![A-Za-z0-9_])"
         },
         {
           "name": "constant.numeric.decimal.subleq",
-          "match": "(?<![A-Za-z0-9_])#?-?\\d+\\b"
+          "match": "(?<![A-Za-z0-9_])-?\\d+(?![A-Za-z0-9_])"
         }
       ]
     },
@@ -170,6 +188,18 @@
         {
           "name": "constant.language.next-address.subleq",
           "match": "\\?"
+        }
+      ]
+    },
+    "labelReferences": {
+      "patterns": [
+        {
+          "name": "variable.other.label.subleq",
+          "match": "@(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)"
+        },
+        {
+          "name": "variable.other.label.subleq",
+          "match": "(?<![A-Za-z0-9_])(?:(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*)(?![A-Za-z0-9_])"
         }
       ]
     }

@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
+from rich.console import Console
 
 from subleq import cli, run
 from subleq.compile import subleq_compile_files
@@ -32,6 +33,7 @@ class CommandLineTests(unittest.TestCase):
             "fmt",
             "emulate",
             "gen-grammar",
+            "gen-syntax",
             "lsp",
         ):
             self.assertIn(command, output.getvalue())
@@ -95,6 +97,55 @@ value: .word 0
 
             self.assertIn(message, output.getvalue())
 
+    def test_debug_execution_fault_prints_machine_trace_without_python_traceback(
+        self,
+    ) -> None:
+        data = np.zeros(1802, dtype=np.uint16)
+        data[2] = 1528
+        data[1528:1531] = [0, 0, 1796]
+        data[1796:1799] = [0, 0, 65535]
+
+        with (
+            contextlib.redirect_stdout(io.StringIO()) as output,
+            contextlib.redirect_stderr(io.StringIO()) as errors,
+        ):
+            run.execute_data(
+                data,
+                {"z": 1796},
+                debug_enabled=True,
+                display_name="trace-test",
+            )
+
+        report = errors.getvalue() + output.getvalue()
+        self.assertIn("Execution traceback", report)
+        self.assertIn("PC= 1528", report)
+        self.assertIn("PC= 1796", report)
+        self.assertIn("cannot fetch three-word instruction at PC=65535", report)
+        self.assertNotIn("Traceback (most recent call last)", report)
+
+    def test_invalid_character_output_reports_subleq_source_and_trace(self) -> None:
+        data = np.array([4, 3, 0, 0, 0xFF00], dtype=np.uint16)
+
+        with (
+            contextlib.redirect_stdout(io.StringIO()) as output,
+            contextlib.redirect_stderr(io.StringIO()) as errors,
+        ):
+            run.execute_data(
+                data,
+                {"bad_character": 4},
+                debug_enabled=False,
+                display_name="bad-output.s",
+                source_map={0: ("bad-output.s", 12)},
+            )
+
+        report = errors.getvalue() + output.getvalue()
+        self.assertIn("attempted character output of 65280", report)
+        self.assertIn("-256 signed, 0xFF00", report)
+        self.assertIn("address 4 (bad_character)", report)
+        self.assertIn("bad-output.s:12", report)
+        self.assertIn("Execution traceback", report)
+        self.assertNotIn("Traceback (most recent call last)", report)
+
     def test_echo_program_prompts_before_reading_input(self) -> None:
         root = Path(__file__).parents[1]
         data, labels = subleq_compile_files(
@@ -150,6 +201,31 @@ value: .word 0
 
         self.assertEqual(raised.exception.code, 0)
         self.assertEqual(output.getvalue().strip(), "subleq 0.1.0")
+
+    def test_syntax_error_shows_location_context_and_no_traceback(self) -> None:
+        source = ".data\n    1\n    .res 2\n.endd\n"
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "broken.s"
+            source_path.write_text(source)
+            output = io.StringIO()
+
+            with (
+                mock.patch(
+                    "subleq.cli.Console",
+                    return_value=Console(file=output, color_system=None, width=100),
+                ),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                cli.main(["run", str(source_path)])
+
+            diagnostic = output.getvalue()
+            self.assertEqual(raised.exception.code, 1)
+            self.assertIn(f"{source_path}:3:5", diagnostic)
+            self.assertIn("unexpected '.res'", diagnostic)
+            self.assertIn("1", diagnostic)
+            self.assertIn(".res 2", diagnostic)
+            self.assertIn("^", diagnostic)
+            self.assertNotIn("Traceback", diagnostic)
 
     def test_lsp_accepts_language_client_stdio_flag(self) -> None:
         with mock.patch.object(cli.lsp, "main") as lsp_main:

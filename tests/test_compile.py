@@ -1,12 +1,52 @@
 """Compiler behavior tests."""
 
 import unittest
+import tempfile
+import time
+from pathlib import Path
 from unittest import mock
 
 import numpy as np
 
 from subleq import run
-from subleq.compile import CompilationError, macro_tradeoffs, subleq_compile
+from subleq.compile import (
+    CompilationError,
+    macro_tradeoffs,
+    subleq_compile,
+    subleq_compile_files_with_source_map,
+)
+
+
+class SourceMapTests(unittest.TestCase):
+    def test_included_macro_invocation_maps_to_calling_file_and_line(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "lib.s").write_text(
+                ".macro jump target\n    subleq 0, 0, target\n.endm\n"
+            )
+            main = root / "main.s"
+            main.write_text(
+                '.include "lib.s"\nmain:\n    jump done\ndone:\n    subleq 0, 0, 0\n'
+            )
+
+            _, _, source_map = subleq_compile_files_with_source_map([main])
+
+            self.assertEqual(source_map[0], (str(main), 3))
+            self.assertEqual(source_map[3], (str(main), 5))
+
+
+class EmulatorTimingTests(unittest.TestCase):
+    def test_emulator_limits_instruction_rate(self) -> None:
+        data = np.zeros(30, dtype=np.uint16)
+        for pc in range(0, 27, 3):
+            data[pc + 2] = pc + 3
+
+        started = time.perf_counter()
+        count = run.subleq(data, {}, instructions_per_second=1_000)
+        elapsed = time.perf_counter() - started
+
+        self.assertEqual(count, 10)
+        self.assertGreaterEqual(elapsed, 0.009)
 
 
 class MacroDeclarationSyntaxTests(unittest.TestCase):
@@ -144,6 +184,21 @@ root:
             source,
             [ord("A"), 10, 9, ord('"'), ord("\\"), ord("B"), 13, 0, 0],
         )
+
+    def test_char_directive_emits_character_code_point(self) -> None:
+        self.assert_compiles_to(
+            ".char 'A'\n.char '\\n'\n.char '\\''\n",
+            [ord("A"), 10, ord("'")],
+        )
+
+    def test_character_immediate_is_hoisted_and_deduplicated(self) -> None:
+        source = """\
+.literals 2
+subleq 'A, '\\n, ?
+subleq 'A, '\\n, ?
+"""
+
+        self.assert_compiles_to(source, [65, 10, 0, 1, 5, 0, 1, 8])
 
     def test_string_directives_preserve_spaces_and_tabs(self) -> None:
         self.assert_compiles_to(

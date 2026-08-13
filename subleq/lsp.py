@@ -8,7 +8,7 @@ from pathlib import Path
 from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
-from .analysis import DocumentAnalysis, Span, Symbol
+from .analysis import DIRECTIVE_DOCS, TOKEN_RE, DocumentAnalysis, Span, Symbol
 from .link import INCLUDE_RE
 
 SERVER = LanguageServer(
@@ -16,6 +16,12 @@ SERVER = LanguageServer(
     "0.1.0",
     text_document_sync_kind=types.TextDocumentSyncKind.Incremental,
 )
+
+SEMANTIC_TOKEN_TYPES = [
+    types.SemanticTokenTypes.Keyword,
+    types.SemanticTokenTypes.Macro,
+    types.SemanticTokenTypes.Label,
+]
 
 
 def included_symbols(
@@ -216,6 +222,55 @@ def inlay_hints(
         )
         for hint in hints
     ]
+
+
+@SERVER.feature(
+    types.TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL,
+    types.SemanticTokensLegend(
+        token_types=SEMANTIC_TOKEN_TYPES,
+        token_modifiers=[],
+    ),
+)
+def semantic_tokens(
+    ls: LanguageServer, params: types.SemanticTokensParams
+) -> types.SemanticTokens:
+    """Color directives, macros, and resolved label definitions/references."""
+    analysis = document_analysis(ls, params.text_document.uri)
+    tokens: list[tuple[int, int, int, int]] = []
+
+    for line_number, source_line in enumerate(analysis.lines):
+        code = source_line.split(";", 1)[0]
+        for match in TOKEN_RE.finditer(code):
+            value = match.group()
+            token_type: types.SemanticTokenTypes | None = None
+            if value in DIRECTIVE_DOCS or value == "subleq":
+                token_type = types.SemanticTokenTypes.Keyword
+            else:
+                symbol = analysis.definition_at(line_number, match.start())
+                if symbol is not None:
+                    token_type = (
+                        types.SemanticTokenTypes.Macro
+                        if symbol.kind == "macro" and value == symbol.name
+                        else types.SemanticTokenTypes.Label
+                    )
+            if token_type is None:
+                continue
+            start = index_to_utf16(source_line, match.start())
+            length = index_to_utf16(source_line, match.end()) - start
+            tokens.append(
+                (line_number, start, length, SEMANTIC_TOKEN_TYPES.index(token_type))
+            )
+
+    data: list[int] = []
+    previous_line = 0
+    previous_start = 0
+    for line, start, length, token_type in tokens:
+        delta_line = line - previous_line
+        delta_start = start - previous_start if delta_line == 0 else start
+        data.extend((delta_line, delta_start, length, token_type, 0))
+        previous_line = line
+        previous_start = start
+    return types.SemanticTokens(data=data)
 
 
 def main() -> None:

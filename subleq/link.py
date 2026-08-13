@@ -22,6 +22,7 @@ class SourceLinker:
     def __init__(self) -> None:
         self._stack: list[tuple[str, str]] = []
         self._linked_stdlib: set[tuple[str, str]] = set()
+        self.origins: list[tuple[str, int] | None] = []
 
     def link(self, inputs: list[Path]) -> str:
         """Link input files in command-line order into one assembly source."""
@@ -78,6 +79,7 @@ class SourceLinker:
                 match = INCLUDE_RE.fullmatch(line)
                 if match is None:
                     output.append(line)
+                    self.origins.append((display_name, line_number))
                     continue
 
                 relative_name = match.group("relative")
@@ -106,3 +108,16 @@ class SourceLinker:
 def link_sources(inputs: list[Path]) -> str:
     """Resolve and concatenate source modules for compilation."""
     return SourceLinker().link(inputs)
+
+
+def link_sources_with_origins(
+    inputs: list[Path],
+) -> tuple[str, list[tuple[str, int] | None]]:
+    """Link sources and map each resulting line to its original file and line."""
+    linker = SourceLinker()
+    source = linker.link(inputs)
+    # SourceLinker normalizes module separators. Pad rare synthetic blank lines.
+    line_count = len(source.splitlines())
+    origins = linker.origins[:line_count]
+    origins.extend([None] * (line_count - len(origins)))
+    return source, origins

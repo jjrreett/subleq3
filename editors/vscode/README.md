@@ -35,6 +35,10 @@ Macro blocks receive contextual highlighting, and both global and private
 label definitions use a theme-recognized definition scope. Canonical private
 labels begin with `@`.
 
+The checked-in TextMate grammar is generated from `subleq.lark`. After changing
+the language syntax, regenerate it from the repository root with
+`uv run subleq gen-syntax`.
+
 Use **SUBLEQ: Restart Language Server** from the command palette after changing
 the server command or arguments. Protocol logs are available in the
 **SUBLEQ Language Server** Output channel; set `subleq.trace.server` to

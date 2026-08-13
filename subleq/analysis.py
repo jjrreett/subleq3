@@ -31,6 +31,7 @@ DIRECTIVE_DOCS = {
     ".endm": "End a macro definition.",
     ".byte": "Emit one word for each numeric byte value.",
     ".word": "Emit one 16-bit word for each numeric value.",
+    ".char": "Emit one word containing a character's code point.",
     ".dword": "Emit each 32-bit value as a high word followed by a low word.",
     ".ascii": "Emit one word per character.",
     ".asciiz": "Emit one word per character followed by a zero word.",

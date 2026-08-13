@@ -54,6 +54,16 @@
         "path": "./syntaxes/subleq.tmLanguage.json"
       }
     ],
+    "semanticTokenScopes": [
+      {
+        "language": "subleq",
+        "scopes": {
+          "label": [
+            "variable.other.label.subleq"
+          ]
+        }
+      }
+    ],
     "commands": [
       {
         "command": "subleq.restartLanguageServer",

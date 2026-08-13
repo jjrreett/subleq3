@@ -16,13 +16,14 @@ from rich import print  # noqa: A004
 
 from .analysis import DocumentAnalysis
 from .harness import HarnessSyntaxError, strip_test_harness
-from .link import link_sources
-from .subleq import Lark_StandAlone, Transformer, UnexpectedInput, VisitError
+from .link import link_sources, link_sources_with_origins
+from .subleq import Lark_StandAlone, Transformer, UnexpectedInput, VisitError, v_args
 
 DEBUG = False
 
 _STRING_ESCAPES = {
     r'\"': '"',
+    r"\'": "'",
     r"\\": "\\",
     r"\n": "\n",
     r"\r": "\r",
@@ -32,7 +33,53 @@ _STRING_ESCAPES = {
 
 
 class CompilationError(Exception):
-    """Failure to Compile."""
+    """Failure to compile, optionally tied to a source location."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        source: str | None = None,
+        source_name: str | None = None,
+        line: int | None = None,
+        column: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.source = source
+        self.source_name = source_name
+        self.line = line
+        self.column = column
+
+    def attach_source(self, source: str, source_name: str | None = None) -> None:
+        """Add source information when a lower compiler layer lacked a filename."""
+        if self.source is None:
+            self.source = source
+        if self.source_name is None:
+            self.source_name = source_name
+
+
+def _syntax_error_message(error: UnexpectedInput) -> str:
+    """Turn Lark's verbose parser dump into a compact headline."""
+    token = getattr(error, "token", None)
+    if token is not None:
+        value = str(token)
+        headline = f"unexpected {value!r}"
+    else:
+        char = getattr(error, "char", None)
+        headline = f"unexpected character {char!r}" if char else "invalid syntax"
+
+    expected = sorted(
+        name
+        for name in (getattr(error, "expected", ()) or ())
+        if not name.startswith("__ANON_")
+    )
+    if expected:
+        friendly = [
+            name.replace("_NEWLINE", "newline").lower()
+            for name in expected
+        ]
+        headline += "; expected " + ", ".join(friendly)
+    return headline
 
 
 @dataclass(frozen=True)
@@ -93,6 +140,12 @@ class _LiteralPool:
 
 @dataclass(frozen=True)
 class _Bootstrap: ...
+
+
+@dataclass(frozen=True)
+class _Sourced:
+    value: object
+    line: int
 
 
 _InstructionToken = str | int | _Next | _Label | _Literal | _LiteralPool | _Bootstrap
@@ -173,7 +226,8 @@ class _SubleqTransformer(Transformer):
             instructions.extend(item)
         return instructions
 
-    def instruction(self, items) -> list[_InstructionToken]:
+    @v_args(meta=True)
+    def instruction(self, meta, items) -> list[_InstructionToken]:
         if not items or items[0] is None:
             return None
 
@@ -184,12 +238,12 @@ class _SubleqTransformer(Transformer):
             args = []
 
         if name in self.macros:
-            return self.macros[name].expand(args)
+            return [_Sourced(value, meta.line) for value in self.macros[name].expand(args)]
         if name == "subleq":
             if len(args) != 3:
                 msg = f"subleq opcode requires 3 arguments, got {len(args)}"
                 raise CompilationError(msg)
-            return args
+            return [_Sourced(value, meta.line) for value in args]
         raise CompilationError(f"Opcode {name!r} not recognized.")
 
     def args(self, items) -> list[_InstructionToken]:
@@ -223,7 +277,11 @@ class _SubleqTransformer(Transformer):
         ident, *args = defines
         if ident in self.macros:
             raise CompilationError(f"Macro {ident!r} is defined twice")
-        m = _Macro(ident, args, self.instructions(instructions))
+        body = [
+            item.value if isinstance(item, _Sourced) else item
+            for item in self.instructions(instructions)
+        ]
+        m = _Macro(ident, args, body)
         self.macros[ident] = m
         return []
 
@@ -246,6 +304,10 @@ class _SubleqTransformer(Transformer):
             expanded.append((x >> 16))  # high word
             expanded.append((x & 0xFFFF))  # low word
         return expanded
+
+    def char(self, items):
+        (token,) = items
+        return [ord(self._decode_escaped(str(token)[1:-1]))]
 
     def ascii(self, items):
         if len(items) == 0:
@@ -273,6 +335,11 @@ class _SubleqTransformer(Transformer):
         (value,) = items
         return _Literal(value % (1 << 16))
 
+    def char_literal(self, items) -> _Literal:
+        (token,) = items
+        value = ord(self._decode_escaped(str(token)[1:]))
+        return _Literal(value % (1 << 16))
+
     def literal_pool(self, items) -> _LiteralPool:
         (capacity,) = items
         return _LiteralPool(capacity)
@@ -282,7 +349,10 @@ class _SubleqTransformer(Transformer):
 
     def string(self, items):
         (token,) = items
-        raw = str(token)[1:-1]
+        return [ord(char) for char in self._decode_escaped(str(token)[1:-1])]
+
+    @staticmethod
+    def _decode_escaped(raw: str) -> str:
         characters: list[str] = []
         index = 0
         while index < len(raw):
@@ -293,7 +363,7 @@ class _SubleqTransformer(Transformer):
                 continue
             characters.append(raw[index])
             index += 1
-        return [ord(char) for char in characters]
+        return "".join(characters)
 
     def LOCAL_LABEL(self, token):
         return token.value
@@ -412,6 +482,8 @@ def subleq_compile(
     source: str,
     *,
     warning_handler: Callable[[str], None] | None = None,
+    source_origins: list[tuple[str, int] | None] | None = None,
+    source_map: dict[int, tuple[str, int]] | None = None,
 ) -> tuple[np.ndarray, dict[str, int]]:
     """Compile subleq assembly into image in the format of np.ndarray."""
     try:
@@ -422,7 +494,12 @@ def subleq_compile(
     try:
         tree = parser.parse(source)
     except UnexpectedInput as error:
-        raise CompilationError(str(error)) from error
+        raise CompilationError(
+            _syntax_error_message(error),
+            source=source,
+            line=getattr(error, "line", None),
+            column=getattr(error, "column", None),
+        ) from error
     debug(tree)
     transformer = _SubleqTransformer()
     try:
@@ -453,10 +530,15 @@ def subleq_compile(
 
     literal_values = list(
         dict.fromkeys(
-            inst.value for inst in instructions if isinstance(inst, _Literal)
+            value.value
+            for inst in instructions
+            if isinstance((value := inst.value if isinstance(inst, _Sourced) else inst), _Literal)
         )
     )
-    literal_pool_count = sum(isinstance(inst, _LiteralPool) for inst in instructions)
+    literal_pool_count = sum(
+        isinstance(inst.value if isinstance(inst, _Sourced) else inst, _LiteralPool)
+        for inst in instructions
+    )
     if literal_pool_count > 1:
         raise CompilationError("The .literals directive may appear only once")
     if literal_values and literal_pool_count == 0:
@@ -484,6 +566,9 @@ def subleq_compile(
     address = 0
 
     for inst in instructions:
+        origin_line = inst.line if isinstance(inst, _Sourced) else None
+        if isinstance(inst, _Sourced):
+            inst = inst.value
         if isinstance(inst, _LiteralPool):
             for literal_value in literal_values:
                 literal_addresses[literal_value] = address
@@ -516,6 +601,13 @@ def subleq_compile(
         else:
             value = inst
         scoped_values.append((value, scope))
+        if source_map is not None and origin_line is not None:
+            if source_origins is not None and origin_line <= len(source_origins):
+                origin = source_origins[origin_line - 1]
+                if origin is not None:
+                    source_map[address] = origin
+            else:
+                source_map[address] = ("<source>", origin_line)
         address += 1
 
     debug("Global labels", labels, sep="\n")
@@ -565,10 +657,45 @@ def subleq_compile_files(
     warning_handler: Callable[[str], None] | None = None,
 ) -> tuple[np.ndarray, dict[str, int]]:
     """Link and compile one or more source files in the given order."""
-    return subleq_compile(
-        link_sources(list(inputs)),
-        warning_handler=warning_handler,
-    )
+    source = link_sources(list(inputs))
+    try:
+        return subleq_compile(source, warning_handler=warning_handler)
+    except CompilationError as error:
+        display_name = str(inputs[0]) if len(inputs) == 1 else "<linked source>"
+        error.attach_source(source, display_name)
+        raise
+
+
+def subleq_compile_files_with_source_map(
+    inputs: Sequence[Path],
+    *,
+    warning_handler: Callable[[str], None] | None = None,
+) -> tuple[np.ndarray, dict[str, int], dict[int, tuple[str, int]]]:
+    """Compile files and retain instruction-address source locations."""
+    source, origins = link_sources_with_origins(list(inputs))
+    source_map: dict[int, tuple[str, int]] = {}
+    try:
+        data, labels = subleq_compile(
+            source,
+            warning_handler=warning_handler,
+            source_origins=origins,
+            source_map=source_map,
+        )
+    except CompilationError as error:
+        if error.line is not None and error.line <= len(origins):
+            origin = origins[error.line - 1]
+            if origin is not None:
+                source_name, source_line = origin
+                error.source_name = source_name
+                error.line = source_line
+                source_path = Path(source_name)
+                if source_path.is_file():
+                    error.source = source_path.read_text()
+        if error.source_name is None:
+            display_name = str(inputs[0]) if len(inputs) == 1 else "<linked source>"
+            error.attach_source(source, display_name)
+        raise
+    return data, labels, source_map
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:

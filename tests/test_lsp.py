@@ -102,7 +102,13 @@ class LanguageServerTests(unittest.TestCase):
                     },
                 },
             },
-            {"jsonrpc": "2.0", "id": 5, "method": "shutdown", "params": None},
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "textDocument/semanticTokens/full",
+                "params": {"textDocument": {"uri": uri}},
+            },
+            {"jsonrpc": "2.0", "id": 6, "method": "shutdown", "params": None},
             {"jsonrpc": "2.0", "method": "exit", "params": None},
         ]
 
@@ -118,9 +124,30 @@ class LanguageServerTests(unittest.TestCase):
 
         self.assertEqual(process.returncode, 0, process.stderr.decode())
         self.assertIn("hoverProvider", by_id[1]["result"]["capabilities"])
+        self.assertIn("semanticTokensProvider", by_id[1]["result"]["capabilities"])
         self.assertIn("Jump unconditionally.", by_id[2]["result"]["contents"]["value"])
         self.assertEqual(by_id[3]["result"]["range"]["start"]["line"], 1)
         self.assertEqual(by_id[4]["result"][0]["label"], ": 1 instruction")
+        semantic_data = by_id[5]["result"]["data"]
+        token_types = by_id[1]["result"]["capabilities"]["semanticTokensProvider"][
+            "legend"
+        ]["tokenTypes"]
+        self.assertIn("label", token_types)
+        self.assertIn(token_types.index("label"), semantic_data[3::5])
+        self.assertIn(token_types.index("macro"), semantic_data[3::5])
+        self.assertIn(token_types.index("keyword"), semantic_data[3::5])
+        decoded_tokens = []
+        line = 0
+        start = 0
+        for offset in range(0, len(semantic_data), 5):
+            delta_line, delta_start, length, token_type, _ = semantic_data[
+                offset : offset + 5
+            ]
+            line += delta_line
+            start = start + delta_start if delta_line == 0 else delta_start
+            decoded_tokens.append((line, start, length, token_types[token_type]))
+        self.assertIn((7, 4, 3, "macro"), decoded_tokens)
+        self.assertIn((7, 8, 5, "label"), decoded_tokens)
 
         diagnostics = next(
             message

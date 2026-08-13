@@ -19,6 +19,7 @@ local_label_def: "@" IDENT ":"
                 | byte
                 | word
                 | dword
+                | char
                 | ascii
                 | asciiz
                 | fill
@@ -32,6 +33,7 @@ macro_signature: IDENT (","? IDENT ("," IDENT)*)?
 byte: ".byte"  NUMBER ("," NUMBER)* _NEWLINE
 word: ".word"  value ("," value)* _NEWLINE
 dword: ".dword"  NUMBER ("," NUMBER)* _NEWLINE
+char: ".char" CHAR _NEWLINE
 ascii: ".ascii" string _NEWLINE
 asciiz: ".asciiz" string _NEWLINE
 fill: ".fill" NUMBER "," NUMBER _NEWLINE
@@ -43,8 +45,9 @@ bootstrap: ".bootstrap" _NEWLINE
 instruction: IDENT args? _NEWLINE
 args: value ("," value)*
 
-?value: LOCAL_LABEL? IDENT | NUMBER | literal | QMARK
+?value: LOCAL_LABEL? IDENT | NUMBER | literal | char_literal | QMARK
 literal: "#" NUMBER
+char_literal: CHAR_IMMEDIATE
 NUMBER: "-"? (DEC_INT | HEX_INT | BIN_INT)
 LOCAL_LABEL: "@"
 DEC_INT: DIGIT+
@@ -59,6 +62,8 @@ _NEWLINE: "\n"
 
 string: STRING
 STRING: /"(?:[^"\\\n\r]|\\["\\nrt0])*"/
+CHAR: /'(?:[^'\\\n\r]|\\['\\nrt0])'/
+CHAR_IMMEDIATE: /'(?:[^'\\\n\r]|\\['\\nrt0])/
 
 %ignore /[ \t]+/
 %ignore /;[^\n]*/
