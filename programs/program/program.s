@@ -1,13 +1,18 @@
-.include <subroutine.s>
-.include <io.s>
-.include <math.s>
+.bootstrap
+
+.res 1
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;; CODE ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.bootstrap
+
+.include <subroutine.s>
+.include <io.s>
+.include <math.s>
 
 .include <print.s>
+
 
 main:
     print_asciiz boot_prompt
@@ -37,10 +42,3 @@ tmp:         .word 0
 boot_prompt: .asciiz "Welcome to the Subleq CPU Emulator!\n"
 input_prompt: .asciiz "> "
 
-.byte $ff
-.word $1234
-.dword $12345678
-.ascii "Hello"
-.asciiz "World"
-.fill 10, $0000
-.res 10

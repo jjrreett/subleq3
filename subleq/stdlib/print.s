@@ -96,3 +96,4 @@ func_print_dec:
             @thousands: 0
             @ten_thousands: 0
         .endd
+        .res 1                                    ; attempt to maintain 3-word alignment for the next instruction

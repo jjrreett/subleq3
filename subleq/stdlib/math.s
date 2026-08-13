@@ -114,6 +114,7 @@
     jmp @return
 
     .data @temporary: 0 .endd
+    .res 2                                    ; attempt to maintain 3-word alignment for the next instruction
     @return:
 .endm
 
@@ -139,6 +140,7 @@
     jmp @return
 
     .data @temporary: 0 .endd
+    .res 2                                    ; attempt to maintain 3-word alignment for the next instruction
     @return:
 .endm
 

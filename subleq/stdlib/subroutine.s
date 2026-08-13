@@ -47,10 +47,20 @@
 ; Changes: the addressed word. Uses private code words as scratch.
 .macro wpt source, pointer
     cpy pointer, @code_b
-    jmp @code_a
-
     .data
         @code_a: source
+        @code_b: 0
+        @code_c: ?
+    .endd
+.endm
+
+; Clear the word addressed by `pointer` using self-modifying code. The input cell
+; is not changed.
+.macro cpt pointer
+    cpy pointer, @code_a
+    cpy pointer, @code_b
+    .data
+        @code_a: 0
         @code_b: 0
         @code_c: ?
     .endd
@@ -78,6 +88,7 @@
     wpt @return_address, stack_ptr
     inc stack_ptr
     jmp target
+    .res 2                                    ; attempt to maintain 3-word alignment for the next instruction
     @return_address: .word ?
 .endm
 
@@ -94,6 +105,7 @@
         @return_address: 0
         @second_pass: 0
     .endd
+    .res 2                                    ; attempt to maintain 3-word alignment for the next instruction
     @setup:
         inc @second_pass
         pop @return_address
